@@ -59,14 +59,14 @@ jobs:
           path: '**/build/reports/tests/**'
           if-no-files-found: ignore
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
 
-      - name: Upload Debug APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: pocketcli-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: pocketcli-release-apk
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 14
 
       # Release & Publish Job (Only on tags or manual release dispatch)
@@ -93,10 +93,10 @@ jobs:
       - name: Build Release Artifacts
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: |
-          ./gradlew assembleRelease -PversionName="${VERSION_NAME}" -PversionCode="${VERSION_CODE}" --stacktrace || ./gradlew assembleDebug -PversionName="${VERSION_NAME}" -PversionCode="${VERSION_CODE}" --stacktrace
+          ./gradlew assembleRelease -PversionName="${VERSION_NAME}" -PversionCode="${VERSION_CODE}" --stacktrace
 
           mkdir -p dist
-          APK_FILE=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
           cp "$APK_FILE" "dist/pocketcli-${VERSION_NAME}-universal.apk"
           
           cd dist

@@ -134,3 +134,10 @@
   - **Run 37112584531** (Веха 6 Onboarding & Settings UI) — SUCCESS
   - **Run 37120626978** (Этап 3 Полный UI/UX Flow, Material 3 Expressive и OTA Обновления) — SUCCESS (Артефакт `pocketcli-debug-apk` собран, все тесты пройдены)
   - **Run 37121178933** (Релизный тег `v1.0.0-beta.1`) — SUCCESS (Сформирован официальный GitHub Release [v1.0.0-beta.1](https://github.com/SH20FK/PocketCLI/releases/tag/v1.0.0-beta.1), опубликованы APK `pocketcli-1.0.0-beta.1-universal.apk`, `SHA256SUMS` и манифест `update.json`).
+
+## Устранение ошибки связывания PRoot и сборка Release:
+- [x] Диагностирована ошибка `library "libtalloc.so.2" not found: needed by main executable`: бинарник `libproot.so` имел динамические зависимости `libtalloc.so.2` и `libandroid-shmem.so`, а также жестко закодированный путь `RUNPATH` в `/data/data/com.termux/files/usr/lib`.
+- [x] В `app/src/main/jniLibs/arm64-v8a` и `x86_64` интегрированы нативные библиотеки `libtalloc.so` и `libandroid-shmem.so`.
+- [x] Скорректированы заголовки ELF: `RUNPATH` заменен на `$ORIGIN` (локальная директория библиотек приложения), а `DT_NEEDED` и `DT_SONAME` переведены с версии `libtalloc.so.2` на стандартное Android-имя `libtalloc.so`.
+- [x] В `ProotEnvironment.kt` в окружение процесса добавлен `LD_LIBRARY_PATH` указывающий на `nativeLibraryDir`.
+- [x] Перевод с Debug на подписанный Release: в `app/build.gradle.kts` настроен `signingConfig` для типа сборки `release`, а `.github/workflows/android.yml` переведен на сборку и публикацию исключительно релизного APK с ID `com.pocketcli` (без суффикса `.debug`).

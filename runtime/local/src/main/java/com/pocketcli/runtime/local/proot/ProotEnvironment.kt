@@ -72,6 +72,7 @@ class ProotEnvironment(
         val env = mutableMapOf<String, String>()
         env["PROOT_LOADER"] = prootLoader.absolutePath
         env["PROOT_TMP_DIR"] = tmpDir.absolutePath
+        env["LD_LIBRARY_PATH"] = nativeLibraryDir.absolutePath
         env["HOME"] = "/root"
         env["PATH"] = "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
         env["TERM"] = "xterm-256color"

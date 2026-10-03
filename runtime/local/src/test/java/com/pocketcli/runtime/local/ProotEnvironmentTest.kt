@@ -77,6 +77,7 @@ class ProotEnvironmentTest {
         val env = environment.getDefaultEnvironment(mapOf("FOO" to "BAR"))
         assertEquals(environment.prootLoader.absolutePath, env["PROOT_LOADER"])
         assertEquals(environment.tmpDir.absolutePath, env["PROOT_TMP_DIR"])
+        assertEquals(environment.nativeLibraryDir.absolutePath, env["LD_LIBRARY_PATH"])
         assertEquals("/root", env["HOME"])
         assertEquals("xterm-256color", env["TERM"])
         assertEquals("BAR", env["FOO"])
