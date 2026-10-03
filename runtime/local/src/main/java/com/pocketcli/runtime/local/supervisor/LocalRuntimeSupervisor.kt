@@ -47,6 +47,7 @@ class LocalRuntimeSupervisor(
     private val workspacesDirProvider: () -> File,
     private val portAllocator: () -> Int = { allocateFreePort() },
     private val tokenGenerator: () -> String = { generateSecureToken() },
+    private val providerKeyProvider: () -> Map<String, String> = { emptyMap() },
     private val processLauncher: (cmd: List<String>, env: Map<String, String>) -> Process = { cmd, env ->
         ProcessBuilder(cmd).apply {
             environment().putAll(env)
@@ -201,20 +202,9 @@ class LocalRuntimeSupervisor(
             env["OPENCODE_SERVER_PASSWORD"] = token
             env["PORT"] = port.toString()
 
-            // Inject API keys from SecretStore
-            val providerKeyNames = listOf(
-                "OPENROUTER_API_KEY",
-                "ANTHROPIC_API_KEY",
-                "OPENAI_API_KEY",
-                "DEEPSEEK_API_KEY",
-                "GEMINI_API_KEY"
-            )
-            for (key in providerKeyNames) {
-                val secret = secretStore.getSecret(key)
-                if (!secret.isNullOrBlank()) {
-                    env[key] = secret
-                }
-            }
+            // Inject API keys from providerKeyProvider
+            val providerKeys = providerKeyProvider()
+            env.putAll(providerKeys)
 
             logBuffer.append("[Supervisor] Команда: ${prootCmd.joinToString(" ")}")
             logBuffer.append("[Supervisor] Порт: $port")
@@ -267,7 +257,7 @@ class LocalRuntimeSupervisor(
             )
             profileDao.upsert(profile)
 
-            val pid = runCatching { process.pid() }.getOrNull()
+            val pid = getProcessPid(process)
             _state.value = LocalRuntimeState.Running(
                 port = port,
                 token = token,
@@ -351,6 +341,21 @@ class LocalRuntimeSupervisor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun getProcessPid(process: Process): Long? {
+        return try {
+            val pidMethod = process.javaClass.getMethod("pid")
+            (pidMethod.invoke(process) as? Number)?.toLong()
+        } catch (_: Exception) {
+            try {
+                val field = process.javaClass.getDeclaredField("id")
+                field.isAccessible = true
+                (field.get(process) as? Number)?.toLong()
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }
