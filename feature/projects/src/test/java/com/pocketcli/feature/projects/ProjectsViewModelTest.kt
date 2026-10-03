@@ -127,6 +127,7 @@ class ProjectsViewModelTest {
             username = "opencode",
             encryptedPassword = "enc:password"
         )
+        profileDao.upsert(profile)
         connectionManager.setActiveProfile(profile)
         testScheduler.advanceUntilIdle()
 
@@ -152,6 +153,7 @@ class ProjectsViewModelTest {
             username = "opencode",
             encryptedPassword = "enc:password"
         )
+        profileDao.upsert(profile)
         connectionManager.setActiveProfile(profile)
         testScheduler.advanceUntilIdle()
 
