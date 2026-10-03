@@ -1,4 +1,4 @@
-package com.pocketcli.data.opencode.db
+package com.pocketcli.data.local.db
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -18,8 +18,8 @@ data class ConnectionProfileEntity(
 )
 
 @Entity(
-    tableName = "sessions",
-    primaryKeys = ["profileId", "sessionId"],
+    tableName = "workspaces",
+    primaryKeys = ["id"],
     foreignKeys = [
         ForeignKey(
             entity = ConnectionProfileEntity::class,
@@ -30,12 +30,42 @@ data class ConnectionProfileEntity(
     ],
     indices = [Index(value = ["profileId"])]
 )
+data class WorkspaceEntity(
+    val id: String,
+    val profileId: String,
+    val displayName: String,
+    val localPath: String,
+    val sourceType: String, // CREATED, CLONED, IMPORTED
+    val remoteUrl: String? = null,
+    val defaultBranch: String = "main",
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastOpenedAt: Long = System.currentTimeMillis(),
+    val archived: Boolean = false
+)
+
+@Entity(
+    tableName = "sessions",
+    primaryKeys = ["profileId", "sessionId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = ConnectionProfileEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["profileId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["profileId"]),
+        Index(value = ["workspaceId"])
+    ]
+)
 data class SessionEntity(
     val profileId: String,
     val sessionId: String,
     val title: String,
     val updatedAt: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val workspaceId: String? = null
 )
 
 @Entity(

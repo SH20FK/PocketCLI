@@ -30,7 +30,29 @@ data class Session(
     val profileId: String,
     val title: String,
     val updatedAt: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val workspaceId: String? = null
+)
+
+@Serializable
+enum class WorkspaceSourceType {
+    CREATED,
+    CLONED,
+    IMPORTED
+}
+
+@Serializable
+data class Workspace(
+    val id: String,
+    val profileId: String,
+    val displayName: String,
+    val localPath: String,
+    val sourceType: WorkspaceSourceType = WorkspaceSourceType.CREATED,
+    val remoteUrl: String? = null,
+    val defaultBranch: String = "main",
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastOpenedAt: Long = System.currentTimeMillis(),
+    val archived: Boolean = false
 )
 
 @Serializable

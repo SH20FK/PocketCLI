@@ -6,8 +6,8 @@ import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.opencode.api.CleartextHttpPolicyInterceptor
 import com.pocketcli.data.opencode.api.OpenCodeApiClient
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
-import com.pocketcli.data.opencode.db.ProfileDao
-import com.pocketcli.data.opencode.db.ConnectionProfileEntity
+import com.pocketcli.data.local.db.ProfileDao
+import com.pocketcli.data.local.db.ConnectionProfileEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

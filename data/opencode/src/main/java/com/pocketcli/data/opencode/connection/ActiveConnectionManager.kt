@@ -5,8 +5,8 @@ import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
 import com.pocketcli.data.opencode.api.BasicAuthInterceptor
 import com.pocketcli.data.opencode.api.CleartextHttpPolicyInterceptor
 import com.pocketcli.data.opencode.api.OpenCodeApiClient
-import com.pocketcli.data.opencode.db.ConnectionProfileEntity
-import com.pocketcli.data.opencode.db.ProfileDao
+import com.pocketcli.data.local.db.ConnectionProfileEntity
+import com.pocketcli.data.local.db.ProfileDao
 import com.pocketcli.data.opencode.sse.OpenCodeSseClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

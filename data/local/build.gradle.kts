@@ -1,13 +1,12 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
 
 android {
-    namespace = "com.pocketcli.data.opencode"
+    namespace = "com.pocketcli.data.local"
     compileSdk = 35
 
     defaultConfig {
@@ -30,12 +29,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:security"))
-    implementation(project(":data:local"))
 
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-    implementation(libs.okhttp.sse)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -43,13 +37,10 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    implementation(libs.datastore.preferences)
-
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
-    testImplementation(libs.mockwebserver)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
 }

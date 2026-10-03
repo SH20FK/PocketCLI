@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:ui"))
     implementation(project(":core:security"))
+    implementation(project(":data:local"))
     implementation(project(":data:opencode"))
 
     implementation(libs.okhttp)

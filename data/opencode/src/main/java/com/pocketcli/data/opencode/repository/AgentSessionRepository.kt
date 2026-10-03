@@ -3,7 +3,7 @@ package com.pocketcli.data.opencode.repository
 import com.pocketcli.core.model.*
 import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
 import com.pocketcli.data.opencode.api.OpenCodeApiClient
-import com.pocketcli.data.opencode.db.*
+import com.pocketcli.data.local.db.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,7 +58,8 @@ class AgentSessionRepository @Inject constructor(
                     profileId = it.profileId,
                     title = it.title,
                     updatedAt = it.updatedAt,
-                    createdAt = it.createdAt
+                    createdAt = it.createdAt,
+                    workspaceId = it.workspaceId
                 )
             }
         }
@@ -71,7 +72,8 @@ class AgentSessionRepository @Inject constructor(
                 sessionId = session.id,
                 title = session.title,
                 updatedAt = session.updatedAt,
-                createdAt = session.createdAt
+                createdAt = session.createdAt,
+                workspaceId = session.workspaceId
             )
         )
     }

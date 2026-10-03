@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.pocketcli.data.opencode.db.ConnectionProfileEntity
+import com.pocketcli.data.local.db.ConnectionProfileEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

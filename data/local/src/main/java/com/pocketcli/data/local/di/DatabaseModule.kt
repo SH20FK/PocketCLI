@@ -1,8 +1,8 @@
-package com.pocketcli.data.opencode.di
+package com.pocketcli.data.local.di
 
 import android.content.Context
 import androidx.room.Room
-import com.pocketcli.data.opencode.db.*
+import com.pocketcli.data.local.db.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,7 +12,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DataModule {
+object DatabaseModule {
 
     @Provides
     @Singleton
@@ -29,6 +29,9 @@ object DataModule {
 
     @Provides
     fun provideProfileDao(db: AppDatabase): ProfileDao = db.profileDao()
+
+    @Provides
+    fun provideWorkspaceDao(db: AppDatabase): WorkspaceDao = db.workspaceDao()
 
     @Provides
     fun provideSessionDao(db: AppDatabase): SessionDao = db.sessionDao()

@@ -30,6 +30,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:ui"))
+    implementation(project(":data:local"))
     implementation(project(":data:opencode"))
 
     implementation(platform(libs.androidx.compose.bom))

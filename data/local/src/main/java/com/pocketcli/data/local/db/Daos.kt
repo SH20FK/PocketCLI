@@ -1,4 +1,4 @@
-package com.pocketcli.data.opencode.db
+package com.pocketcli.data.local.db
 
 import androidx.room.Dao
 import androidx.room.Database
@@ -31,6 +31,30 @@ interface ProfileDao {
 }
 
 @Dao
+interface WorkspaceDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(workspace: WorkspaceEntity)
+
+    @Update
+    suspend fun update(workspace: WorkspaceEntity)
+
+    @Query("SELECT * FROM workspaces WHERE profileId = :profileId AND archived = 0 ORDER BY lastOpenedAt DESC")
+    fun getWorkspaces(profileId: String): Flow<List<WorkspaceEntity>>
+
+    @Query("SELECT * FROM workspaces WHERE profileId = :profileId AND archived = 1 ORDER BY lastOpenedAt DESC")
+    fun getArchivedWorkspaces(profileId: String): Flow<List<WorkspaceEntity>>
+
+    @Query("SELECT * FROM workspaces WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): WorkspaceEntity?
+
+    @Query("UPDATE workspaces SET lastOpenedAt = :timestamp WHERE id = :id")
+    suspend fun updateLastOpened(id: String, timestamp: Long = System.currentTimeMillis())
+
+    @Query("DELETE FROM workspaces WHERE id = :id")
+    suspend fun deleteById(id: String)
+}
+
+@Dao
 interface SessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(session: SessionEntity)
@@ -46,6 +70,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getSessionBySessionId(sessionId: String): SessionEntity?
+
+    @Query("SELECT * FROM sessions WHERE workspaceId = :workspaceId ORDER BY updatedAt DESC")
+    fun getSessionsForWorkspace(workspaceId: String): Flow<List<SessionEntity>>
 
     @Query("DELETE FROM sessions WHERE profileId = :profileId AND sessionId = :sessionId")
     suspend fun delete(profileId: String, sessionId: String)
@@ -87,15 +114,17 @@ interface ToolCallDao {
 @Database(
     entities = [
         ConnectionProfileEntity::class,
+        WorkspaceEntity::class,
         SessionEntity::class,
         MessageEntity::class,
         ToolCallEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
+    abstract fun workspaceDao(): WorkspaceDao
     abstract fun sessionDao(): SessionDao
     abstract fun messageDao(): MessageDao
     abstract fun toolCallDao(): ToolCallDao
