@@ -17,6 +17,7 @@ interface AgentAdapter {
     suspend fun createSession(title: String): Result<Session>
     suspend fun listSessions(): Result<List<Session>>
     suspend fun sendPrompt(sessionId: String, prompt: Prompt): Result<Unit>
+    suspend fun getModels(): Result<List<ModelInfo>> = Result.success(emptyList())
     suspend fun cancel(sessionId: String): Result<Unit>
     suspend fun respondPermission(requestId: String, option: PermissionOption): Result<Unit>
     suspend fun disconnect()

@@ -1,22 +1,29 @@
 package com.pocketcli.feature.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pocketcli.core.model.Message
 import com.pocketcli.core.model.MessageRole
+import com.pocketcli.core.model.ModelInfo
 import com.pocketcli.core.model.SessionState
 import com.pocketcli.core.ui.components.*
 
@@ -47,6 +54,11 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 title = {
                     Column {
                         Text(text = "Session Chat", style = MaterialTheme.typography.titleMedium)
@@ -56,6 +68,32 @@ fun ChatScreen(
                             color = if (uiState.sessionState == SessionState.BUSY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                },
+                actions = {
+                    FilterChip(
+                        selected = uiState.selectedModel != null,
+                        onClick = { viewModel.openModelPicker() },
+                        label = {
+                            Text(
+                                text = uiState.selectedModel?.name ?: "Default Model",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.SmartToy,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Select Model"
+                            )
+                        }
+                    )
                 }
             )
         },
@@ -67,6 +105,21 @@ fun ChatScreen(
                 .padding(innerPadding)
                 .imePadding()
         ) {
+            // Optional error banner
+            uiState.errorMessage?.let { error ->
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
             // Messages Timeline
             LazyColumn(
                 state = listState,
@@ -110,7 +163,98 @@ fun ChatScreen(
             toolCall = uiState.selectedToolForDetails,
             onDismiss = { viewModel.dismissToolDetails() }
         )
+
+        // Model Picker Dialog
+        if (uiState.isModelPickerOpen) {
+            ModelPickerDialog(
+                availableModels = uiState.availableModels,
+                selectedModel = uiState.selectedModel,
+                onSelectModel = { viewModel.selectModel(it) },
+                onDismiss = { viewModel.dismissModelPicker() }
+            )
+        }
     }
+}
+
+@Composable
+fun ModelPickerDialog(
+    availableModels: List<ModelInfo>,
+    selectedModel: ModelInfo?,
+    onSelectModel: (ModelInfo?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredModels = remember(availableModels, searchQuery) {
+        if (searchQuery.isBlank()) availableModels
+        else availableModels.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.modelId.contains(searchQuery, ignoreCase = true) ||
+            it.providerId.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Agent Model") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search ${availableModels.size} models...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        ListItem(
+                            headlineContent = { Text("Default (Server Default)") },
+                            supportingContent = { Text("Use server configured default model") },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = selectedModel == null,
+                                    onClick = { onSelectModel(null) }
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectModel(null) }
+                        )
+                        HorizontalDivider()
+                    }
+
+                    items(filteredModels, key = { "${it.providerId}:${it.modelId}" }) { model ->
+                        val isSelected = selectedModel?.providerId == model.providerId && selectedModel.modelId == model.modelId
+                        ListItem(
+                            headlineContent = { Text(model.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            supportingContent = { Text("${model.providerId} • ${model.modelId}", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { onSelectModel(model) }
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectModel(model) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable

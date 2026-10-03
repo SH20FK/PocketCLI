@@ -24,7 +24,7 @@ import java.util.*
 @Composable
 fun SessionsScreen(
     viewModel: SessionsViewModel,
-    onSessionClick: (sessionId: String) -> Unit,
+    onSessionClick: (sessionId: String, profileId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,7 +85,7 @@ fun SessionsScreen(
                     items(uiState.sessions, key = { it.id }) { session ->
                         SessionItemCard(
                             session = session,
-                            onClick = { onSessionClick(session.id) },
+                            onClick = { onSessionClick(session.id, session.profileId) },
                             onDelete = { viewModel.deleteSession(session.id) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -118,7 +118,7 @@ fun SessionsScreen(
                 },
                 confirmButton = {
                     Button(
-                        onClick = { viewModel.createSession { onSessionClick(it) } },
+                        onClick = { viewModel.createSession { onSessionClick(it, uiState.activeProfileId) } },
                         enabled = !uiState.isCreatingSession
                     ) {
                         Text(if (uiState.isCreatingSession) "Creating..." else "Create")

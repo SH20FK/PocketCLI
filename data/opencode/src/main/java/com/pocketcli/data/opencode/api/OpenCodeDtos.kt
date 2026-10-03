@@ -12,15 +12,16 @@ data class OpenCodeHealthDto(
 
 @Serializable
 data class OpenCodeTimeDto(
-    val created: Long,
-    val updated: Long = created
+    val created: Long = 0L,
+    val updated: Long = 0L,
+    val completed: Long = 0L
 )
 
 @Serializable
 data class OpenCodeSessionDto(
     val id: String,
-    val title: String,
-    val time: OpenCodeTimeDto,
+    val title: String = "",
+    val time: OpenCodeTimeDto = OpenCodeTimeDto(),
     val slug: String? = null,
     val directory: String? = null
 )
@@ -148,5 +149,26 @@ data class OpenCodePermissionReplyRequest(
 @Serializable
 data class OpenCodeReconcileMessageDto(
     val info: OpenCodeMessageInfoDto,
-    val parts: List<OpenCodePartDto>
+    val parts: List<OpenCodePartDto> = emptyList()
+)
+
+@Serializable
+data class OpenCodeModelDetailDto(
+    val id: String,
+    val name: String? = null,
+    val providerID: String? = null
+)
+
+@Serializable
+data class OpenCodeProviderDto(
+    val id: String,
+    val name: String? = null,
+    val models: Map<String, OpenCodeModelDetailDto> = emptyMap()
+)
+
+@Serializable
+data class OpenCodeProvidersResponseDto(
+    val all: List<OpenCodeProviderDto> = emptyList(),
+    val connected: List<String> = emptyList(),
+    val default: Map<String, String> = emptyMap()
 )

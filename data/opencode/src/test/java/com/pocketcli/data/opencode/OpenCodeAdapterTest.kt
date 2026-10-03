@@ -157,4 +157,35 @@ class OpenCodeAdapterTest {
 
         clientWithCleartextCheck.newCall(request).execute()
     }
+
+    @Test
+    fun testGetModels() = runBlocking {
+        val providersJson = """
+            {
+              "all": [
+                {
+                  "id": "opencode",
+                  "name": "OpenCode",
+                  "models": {
+                    "claude-sonnet-4-6": {
+                      "id": "claude-sonnet-4-6",
+                      "name": "Claude 3.7 Sonnet"
+                    }
+                  }
+                }
+              ],
+              "connected": ["opencode"],
+              "default": {"opencode": "claude-sonnet-4-6"}
+            }
+        """.trimIndent()
+        mockWebServer.enqueue(MockResponse().setBody(providersJson).setResponseCode(200))
+
+        val result = adapter.getModels()
+        assertTrue(result.isSuccess)
+        val models = result.getOrThrow()
+        assertEquals(1, models.size)
+        assertEquals("opencode", models[0].providerId)
+        assertEquals("claude-sonnet-4-6", models[0].modelId)
+        assertEquals("Claude 3.7 Sonnet", models[0].name)
+    }
 }

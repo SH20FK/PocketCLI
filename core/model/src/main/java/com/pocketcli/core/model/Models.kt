@@ -40,6 +40,13 @@ data class ModelIdentifier(
 )
 
 @Serializable
+data class ModelInfo(
+    val providerId: String,
+    val modelId: String,
+    val name: String
+)
+
+@Serializable
 data class Prompt(
     val text: String,
     val model: ModelIdentifier? = null,

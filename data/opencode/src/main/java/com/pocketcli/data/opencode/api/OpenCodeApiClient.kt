@@ -80,11 +80,28 @@ class OpenCodeApiClient(
         }
     }
 
+    suspend fun getProviders(): Result<OpenCodeProvidersResponseDto> = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url(buildUrl("/provider"))
+                .get()
+                .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("HTTP ${response.code}: ${response.message}")
+                }
+                val respBody = response.body?.string().orEmpty()
+                json.decodeFromString<OpenCodeProvidersResponseDto>(respBody)
+            }
+        }
+    }
+
     suspend fun sendMessage(
         sessionId: String,
         promptText: String,
         model: OpenCodeModelInput? = null
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<OpenCodeReconcileMessageDto?> = withContext(Dispatchers.IO) {
         runCatching {
             val reqPayload = OpenCodeSendMessageRequest(
                 parts = listOf(OpenCodeTextPartInput(type = "text", text = promptText)),
@@ -100,6 +117,8 @@ class OpenCodeApiClient(
                 if (!response.isSuccessful) {
                     throw IOException("HTTP ${response.code}: ${response.message}")
                 }
+                val respBody = response.body?.string().orEmpty()
+                runCatching { json.decodeFromString<OpenCodeReconcileMessageDto>(respBody) }.getOrNull()
             }
         }
     }

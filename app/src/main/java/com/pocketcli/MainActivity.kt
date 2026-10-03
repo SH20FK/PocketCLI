@@ -28,7 +28,7 @@ import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
 @Serializable object SessionsRoute
-@Serializable data class ChatRoute(val sessionId: String)
+@Serializable data class ChatRoute(val sessionId: String, val profileId: String = "")
 @Serializable object SettingsRoute
 
 @AndroidEntryPoint
@@ -81,8 +81,8 @@ class MainActivity : ComponentActivity() {
                             val viewModel: SessionsViewModel = hiltViewModel()
                             SessionsScreen(
                                 viewModel = viewModel,
-                                onSessionClick = { sessionId ->
-                                    navController.navigate(ChatRoute(sessionId = sessionId))
+                                onSessionClick = { sessionId, profileId ->
+                                    navController.navigate(ChatRoute(sessionId = sessionId, profileId = profileId))
                                 }
                             )
                         }
@@ -91,8 +91,8 @@ class MainActivity : ComponentActivity() {
                             val route = backStackEntry.toRoute<ChatRoute>()
                             val viewModel: ChatViewModel = hiltViewModel()
 
-                            LaunchedEffect(route.sessionId) {
-                                viewModel.initialize(sessionId = route.sessionId)
+                            LaunchedEffect(route.sessionId, route.profileId) {
+                                viewModel.initialize(sessionId = route.sessionId, profileId = route.profileId)
                             }
 
                             ChatScreen(

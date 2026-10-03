@@ -63,6 +63,10 @@ class ActiveConnectionManager @Inject constructor(
         }
     }
 
+    fun getActiveProfileId(): String? = _activeProfile.value?.id ?: runBlocking(Dispatchers.IO) {
+        profileDao.getAllList().firstOrNull()?.id
+    }
+
     @Synchronized
     fun getAdapter(): OpenCodeAdapter? {
         cachedAdapter?.let { return it }
@@ -87,8 +91,8 @@ class ActiveConnectionManager @Inject constructor(
 
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(CleartextHttpPolicyInterceptor { profile.allowCleartextHttp })
             .addInterceptor(BasicAuthInterceptor(
                 usernameProvider = { profile.username },

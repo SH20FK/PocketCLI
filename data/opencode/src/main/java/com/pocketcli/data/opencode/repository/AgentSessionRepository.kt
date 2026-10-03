@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -79,6 +78,10 @@ class AgentSessionRepository @Inject constructor(
 
     suspend fun deleteSession(profileId: String, sessionId: String) {
         database.sessionDao().delete(profileId, sessionId)
+    }
+
+    suspend fun getProfileIdForSession(sessionId: String): String? {
+        return database.sessionDao().getSessionBySessionId(sessionId)?.profileId
     }
 
     /**
@@ -162,31 +165,47 @@ class AgentSessionRepository @Inject constructor(
 
             is AgentEvent.TextDelta -> {
                 inFlightMessages.update { map ->
-                    val current = map[sessionId] ?: return@update map
-                    if (current.id == event.messageId) {
-                        val updated = map.toMutableMap()
+                    val current = map[sessionId]
+                    val updated = map.toMutableMap()
+                    if (current != null && current.id == event.messageId) {
                         updated[sessionId] = current.copy(text = current.text + event.text)
-                        updated
-                    } else map
+                    } else {
+                        updated[sessionId] = StreamingMessageState(
+                            id = event.messageId,
+                            sessionId = sessionId,
+                            profileId = profileId,
+                            role = MessageRole.ASSISTANT,
+                            text = event.text
+                        )
+                    }
+                    updated
                 }
             }
 
             is AgentEvent.ReasoningDelta -> {
                 inFlightMessages.update { map ->
-                    val current = map[sessionId] ?: return@update map
-                    if (current.id == event.messageId) {
-                        val updated = map.toMutableMap()
+                    val current = map[sessionId]
+                    val updated = map.toMutableMap()
+                    if (current != null && current.id == event.messageId) {
                         val newReasoning = (current.reasoning ?: "") + event.text
                         updated[sessionId] = current.copy(reasoning = newReasoning)
-                        updated
-                    } else map
+                    } else {
+                        updated[sessionId] = StreamingMessageState(
+                            id = event.messageId,
+                            sessionId = sessionId,
+                            profileId = profileId,
+                            role = MessageRole.ASSISTANT,
+                            reasoning = event.text
+                        )
+                    }
+                    updated
                 }
             }
 
             is AgentEvent.ToolCallUpdate -> {
                 inFlightMessages.update { map ->
-                    val current = map[sessionId] ?: return@update map
-                    val updatedTools = current.activeToolCalls.toMutableMap()
+                    val current = map[sessionId]
+                    val updatedTools = (current?.activeToolCalls ?: emptyMap()).toMutableMap()
                     val (sanitizedOutput, isTruncated) = DbSanitizer.sanitizeOutput(event.output)
                     updatedTools[event.callId] = ToolCall(
                         callId = event.callId,
@@ -198,7 +217,17 @@ class AgentSessionRepository @Inject constructor(
                         isTruncated = isTruncated
                     )
                     val updated = map.toMutableMap()
-                    updated[sessionId] = current.copy(activeToolCalls = updatedTools)
+                    if (current != null) {
+                        updated[sessionId] = current.copy(activeToolCalls = updatedTools)
+                    } else {
+                        updated[sessionId] = StreamingMessageState(
+                            id = event.messageId,
+                            sessionId = sessionId,
+                            profileId = profileId,
+                            role = MessageRole.ASSISTANT,
+                            activeToolCalls = updatedTools
+                        )
+                    }
                     updated
                 }
 

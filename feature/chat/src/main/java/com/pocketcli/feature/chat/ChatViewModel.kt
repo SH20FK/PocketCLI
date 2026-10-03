@@ -19,7 +19,9 @@ data class ChatUiState(
     val pendingPermission: AgentEvent.PermissionRequested? = null,
     val selectedToolForDetails: ToolCall? = null,
     val composerDraft: String = "",
-    val currentModel: String = "Default",
+    val availableModels: List<ModelInfo> = emptyList(),
+    val selectedModel: ModelInfo? = null,
+    val isModelPickerOpen: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -35,35 +37,55 @@ class ChatViewModel @Inject constructor(
     private var activeAdapter: OpenCodeAdapter? = null
 
     fun initialize(sessionId: String, profileId: String? = null, adapter: OpenCodeAdapter? = null) {
-        val effectiveProfileId = profileId
-            ?: connectionManager.activeProfile.value?.id
-            ?: ""
         val effectiveAdapter = adapter ?: connectionManager.getAdapter()
-
-        _uiState.update { it.copy(sessionId = sessionId, profileId = effectiveProfileId) }
         activeAdapter = effectiveAdapter
 
-        // 1. Observe hybrid message stream (Room + in-flight StateFlow)
         viewModelScope.launch {
-            repository.getMessages(effectiveProfileId, sessionId).collect { messages ->
-                _uiState.update { it.copy(messages = messages) }
+            val resolvedProfileId = profileId?.takeIf { it.isNotEmpty() }
+                ?: connectionManager.activeProfile.value?.id
+                ?: repository.getProfileIdForSession(sessionId)
+                ?: connectionManager.getActiveProfileId()
+                ?: ""
+
+            _uiState.update { it.copy(sessionId = sessionId, profileId = resolvedProfileId) }
+
+            // 1. Observe hybrid message stream (Room + in-flight StateFlow)
+            launch {
+                repository.getMessages(resolvedProfileId, sessionId).collect { messages ->
+                    _uiState.update { it.copy(messages = messages) }
+                }
             }
-        }
 
-        // 2. Observe SSE events for this session
-        if (effectiveAdapter != null) {
-            viewModelScope.launch {
-                effectiveAdapter.events(sessionId).collect { event ->
-                    repository.handleAgentEvent(effectiveProfileId, sessionId, event)
+            // 2. Load available models from the server
+            launch {
+                effectiveAdapter?.getModels()?.onSuccess { models ->
+                    _uiState.update { it.copy(availableModels = models) }
+                }
+            }
 
-                    when (event) {
-                        is AgentEvent.SessionStatus -> {
-                            _uiState.update { it.copy(sessionState = event.state) }
+            // 3. Reconcile existing server messages if available
+            val apiClient = effectiveAdapter?.apiClient
+            if (apiClient != null && resolvedProfileId.isNotEmpty()) {
+                launch {
+                    repository.reconcile(apiClient, resolvedProfileId, sessionId)
+                }
+            }
+
+            // 4. Observe SSE events for this session
+            if (effectiveAdapter != null) {
+                launch {
+                    effectiveAdapter.events(sessionId).collect { event ->
+                        repository.handleAgentEvent(resolvedProfileId, sessionId, event)
+
+                        when (event) {
+                            is AgentEvent.SessionStatus -> {
+                                _uiState.update { it.copy(sessionState = event.state) }
+                            }
+                            is AgentEvent.PermissionRequested -> {
+                                _uiState.update { it.copy(pendingPermission = event) }
+                            }
+                            else -> Unit
                         }
-                        is AgentEvent.PermissionRequested -> {
-                            _uiState.update { it.copy(pendingPermission = event) }
-                        }
-                        else -> Unit
                     }
                 }
             }
@@ -72,6 +94,18 @@ class ChatViewModel @Inject constructor(
 
     fun onDraftChange(text: String) {
         _uiState.update { it.copy(composerDraft = text) }
+    }
+
+    fun openModelPicker() {
+        _uiState.update { it.copy(isModelPickerOpen = true) }
+    }
+
+    fun dismissModelPicker() {
+        _uiState.update { it.copy(isModelPickerOpen = false) }
+    }
+
+    fun selectModel(model: ModelInfo?) {
+        _uiState.update { it.copy(selectedModel = model, isModelPickerOpen = false) }
     }
 
     fun sendPrompt() {
@@ -96,7 +130,8 @@ class ChatViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = adapter.sendPrompt(state.sessionId, Prompt(text = text))
+            val modelInput = state.selectedModel?.let { ModelIdentifier(it.providerId, it.modelId) }
+            val result = adapter.sendPrompt(state.sessionId, Prompt(text = text, model = modelInput))
             result.onFailure { err ->
                 _uiState.update {
                     it.copy(
@@ -105,6 +140,13 @@ class ChatViewModel @Inject constructor(
                     )
                 }
             }
+
+            // 3. Reconcile with server to guarantee response is stored even if SSE dropped
+            val apiClient = adapter.apiClient
+            if (state.profileId.isNotEmpty()) {
+                repository.reconcile(apiClient, state.profileId, state.sessionId)
+            }
+            _uiState.update { it.copy(sessionState = SessionState.IDLE) }
         }
     }
 

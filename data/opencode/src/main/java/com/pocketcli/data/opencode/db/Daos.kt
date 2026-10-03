@@ -44,6 +44,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE profileId = :profileId AND sessionId = :sessionId LIMIT 1")
     suspend fun getSession(profileId: String, sessionId: String): SessionEntity?
 
+    @Query("SELECT * FROM sessions WHERE sessionId = :sessionId LIMIT 1")
+    suspend fun getSessionBySessionId(sessionId: String): SessionEntity?
+
     @Query("DELETE FROM sessions WHERE profileId = :profileId AND sessionId = :sessionId")
     suspend fun delete(profileId: String, sessionId: String)
 
