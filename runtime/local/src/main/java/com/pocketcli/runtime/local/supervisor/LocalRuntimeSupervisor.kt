@@ -21,10 +21,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -333,15 +334,14 @@ class LocalRuntimeSupervisor(
             okHttpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body?.string().orEmpty()
-                    val json = JSONObject(body)
-                    val healthy = json.optBoolean("healthy", false)
-                    val version = json.optString("version", "unknown")
-                    Result.success(HealthInfo(healthy = healthy, version = version))
+                    val parsed = healthJson.decodeFromString<HealthCheckResponse>(body)
+                    Result.success(HealthInfo(healthy = parsed.healthy, version = parsed.version))
                 } else {
                     Result.failure(IllegalStateException("HTTP ${response.code}"))
                 }
             }
         } catch (e: Exception) {
+            logBuffer.append("[Supervisor] Health-check call error: ${e.message}")
             Result.failure(e)
         }
     }
@@ -370,4 +370,15 @@ private fun generateSecureToken(): String {
     val bytes = ByteArray(24)
     SecureRandom().nextBytes(bytes)
     return bytes.joinToString("") { "%02x".format(it) }
+}
+
+@Serializable
+private data class HealthCheckResponse(
+    val healthy: Boolean = false,
+    val version: String = "unknown"
+)
+
+private val healthJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
 }
