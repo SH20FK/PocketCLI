@@ -2,14 +2,19 @@ package com.pocketcli.data.opencode.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
+@OptIn(ExperimentalSerializationApi::class)
 class OpenCodeApiClient(
     private val okHttpClient: OkHttpClient,
     private val baseUrlProvider: () -> String,
@@ -17,6 +22,7 @@ class OpenCodeApiClient(
         ignoreUnknownKeys = true
         coerceInputValues = true
         isLenient = true
+        explicitNulls = false
     }
 ) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -55,7 +61,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 json.decodeFromString<OpenCodeSessionDto>(respBody)
@@ -72,7 +79,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 json.decodeFromString<List<OpenCodeSessionDto>>(respBody)
@@ -89,7 +97,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 json.decodeFromString<OpenCodeProvidersResponseDto>(respBody)
@@ -103,11 +112,13 @@ class OpenCodeApiClient(
         model: OpenCodeModelInput? = null
     ): Result<OpenCodeReconcileMessageDto?> = withContext(Dispatchers.IO) {
         runCatching {
-            val reqPayload = OpenCodeSendMessageRequest(
-                parts = listOf(OpenCodeTextPartInput(type = "text", text = promptText)),
-                model = model
-            )
-            val body = json.encodeToString(reqPayload).toRequestBody(jsonMediaType)
+            val reqPayload = buildJsonObject {
+                put("parts", json.encodeToJsonElement(listOf(OpenCodeTextPartInput(type = "text", text = promptText))))
+                if (model != null) {
+                    put("model", json.encodeToJsonElement(model))
+                }
+            }
+            val body = reqPayload.toString().toRequestBody(jsonMediaType)
             val request = Request.Builder()
                 .url(buildUrl("/session/$sessionId/message"))
                 .post(body)
@@ -115,7 +126,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 runCatching { json.decodeFromString<OpenCodeReconcileMessageDto>(respBody) }.getOrNull()
@@ -133,7 +145,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 respBody.toBooleanStrictOrNull() ?: true
@@ -143,8 +156,10 @@ class OpenCodeApiClient(
 
     suspend fun replyPermission(requestId: String, reply: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val payload = OpenCodePermissionReplyRequest(reply = reply)
-            val body = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val reqPayload = buildJsonObject {
+                put("reply", reply)
+            }
+            val body = reqPayload.toString().toRequestBody(jsonMediaType)
             val request = Request.Builder()
                 .url(buildUrl("/permission/$requestId/reply"))
                 .post(body)
@@ -152,7 +167,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
             }
         }
@@ -167,7 +183,8 @@ class OpenCodeApiClient(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
                 val respBody = response.body?.string().orEmpty()
                 json.decodeFromString<List<OpenCodeReconcileMessageDto>>(respBody)

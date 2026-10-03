@@ -139,6 +139,7 @@ class ChatViewModel @Inject constructor(
                         errorMessage = "Failed to send message: ${err.message}"
                     )
                 }
+                return@launch
             }
 
             // 3. Reconcile with server to guarantee response is stored even if SSE dropped
@@ -148,6 +149,10 @@ class ChatViewModel @Inject constructor(
             }
             _uiState.update { it.copy(sessionState = SessionState.IDLE) }
         }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun stop() {

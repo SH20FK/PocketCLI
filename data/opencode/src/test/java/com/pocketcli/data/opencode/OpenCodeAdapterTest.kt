@@ -2,7 +2,9 @@ package com.pocketcli.data.opencode
 
 import app.cash.turbine.test
 import kotlin.time.Duration.Companion.seconds
+import com.pocketcli.core.model.ModelIdentifier
 import com.pocketcli.core.model.PermissionOption
+import com.pocketcli.core.model.Prompt
 import com.pocketcli.core.model.SessionState
 import com.pocketcli.core.model.ToolStatus
 import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
@@ -187,5 +189,38 @@ class OpenCodeAdapterTest {
         assertEquals("opencode", models[0].providerId)
         assertEquals("claude-sonnet-4-6", models[0].modelId)
         assertEquals("Claude 3.7 Sonnet", models[0].name)
+    }
+
+    @Test
+    fun testSendMessageWithoutModel() = runBlocking {
+        val dummyResponse = """{"info":{"id":"msg_1","sessionID":"ses_test_123","role":"assistant","time":{"created":100,"completed":200}},"parts":[]}"""
+        mockWebServer.enqueue(MockResponse().setBody(dummyResponse).setResponseCode(200))
+
+        val result = adapter.sendPrompt("ses_test_123", Prompt(text = "Hello world"))
+        assertTrue(result.isSuccess)
+
+        val recordedRequest = mockWebServer.takeRequest()
+        val requestBody = recordedRequest.body.readUtf8()
+        assertEquals("/session/ses_test_123/message", recordedRequest.path)
+        assertTrue("Request body should contain text part", requestBody.contains("\"text\":\"Hello world\""))
+        assertFalse("Request body must NOT contain null model field", requestBody.contains("\"model\""))
+    }
+
+    @Test
+    fun testSendMessageWithModel() = runBlocking {
+        val dummyResponse = """{"info":{"id":"msg_1","sessionID":"ses_test_123","role":"assistant","time":{"created":100,"completed":200}},"parts":[]}"""
+        mockWebServer.enqueue(MockResponse().setBody(dummyResponse).setResponseCode(200))
+
+        val result = adapter.sendPrompt(
+            "ses_test_123",
+            Prompt(text = "Hello world", model = ModelIdentifier("opencode", "claude-sonnet-4-6"))
+        )
+        assertTrue(result.isSuccess)
+
+        val recordedRequest = mockWebServer.takeRequest()
+        val requestBody = recordedRequest.body.readUtf8()
+        assertEquals("/session/ses_test_123/message", recordedRequest.path)
+        assertTrue("Request body should contain text part", requestBody.contains("\"text\":\"Hello world\""))
+        assertTrue("Request body must contain model object", requestBody.contains("\"model\":{\"providerID\":\"opencode\",\"modelID\":\"claude-sonnet-4-6\"}"))
     }
 }
