@@ -217,21 +217,8 @@ class LocalRuntimeSupervisorTest {
     }
 
     private class FakeSecretStore : SecretStore {
-        private val secrets = mutableMapOf<String, String>()
-
-        override fun encrypt(plainText: String): String = "enc_$plainText"
-
-        override fun decrypt(cipherText: String): String = cipherText.removePrefix("enc_")
-
-        override fun saveSecret(key: String, value: String) {
-            secrets[key] = value
-        }
-
-        override fun getSecret(key: String): String? = secrets[key]
-
-        override fun removeSecret(key: String) {
-            secrets.remove(key)
-        }
+        override fun encrypt(plaintext: String): String = "enc_$plaintext"
+        override fun decrypt(encryptedPayload: String): String = encryptedPayload.removePrefix("enc_")
     }
 
     private class FakeProcess(private val exitCode: Int = 0) : Process() {
