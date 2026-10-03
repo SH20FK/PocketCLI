@@ -13,6 +13,7 @@ data class ChatUiState(
     val sessionTitle: String = "Чат сессии",
     val workspaceName: String = "Локально",
     val runtimeName: String = "OpenCode",
+    val agentType: AgentType = AgentType.OPENCODE,
     val messages: List<Message> = emptyList(),
     val nodes: List<ChatNode> = emptyList(),
     val composer: ComposerState = ComposerState(),

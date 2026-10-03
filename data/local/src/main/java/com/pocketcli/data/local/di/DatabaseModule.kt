@@ -2,6 +2,8 @@ package com.pocketcli.data.local.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pocketcli.data.local.db.*
 import dagger.Module
 import dagger.Provides
@@ -14,6 +16,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE sessions ADD COLUMN agentType TEXT NOT NULL DEFAULT 'opencode'")
+            db.execSQL("ALTER TABLE connection_profiles ADD COLUMN agentType TEXT NOT NULL DEFAULT 'opencode'")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(
@@ -23,7 +32,8 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "pocketcli.db"
-        ).fallbackToDestructiveMigration()
+        ).addMigrations(MIGRATION_2_3)
+            .fallbackToDestructiveMigration()
             .build()
     }
 

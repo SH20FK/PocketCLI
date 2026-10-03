@@ -9,6 +9,9 @@
   - Local (proot): запланировано на Этап 2.
 
 ## 2. Agent Client Protocol (ACP)
-- **Протокол**: JSON-RPC 2.0 по stdio.
-- **Агенты**: Claude Code (адаптер Zed), Gemini CLI, Codex (адаптер Zed).
-- **Поддержка в приложении**: запланировано на Этап 3.
+- **Протокол**: JSON-RPC 2.0 по stdio / stream.
+- **Агенты**: Claude Code (адаптер Zed / Anthropic API), Gemini / Antigravity (Google DeepMind), Codex (адаптер Zed / OpenAI API).
+- **Поддержка в приложении**:
+  - Интеграция протокола ACP (`AcpProtocol`, `AcpAdapter`).
+  - Диалоги настройки API-ключей (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) и выбора моделей в Настройках.
+  - Селектор агентов при создании сессий с отображением бейджей в чате и списке сессий.

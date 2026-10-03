@@ -21,9 +21,9 @@ class ChatViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    private var activeAdapter: OpenCodeAdapter? = null
+    private var activeAdapter: AgentAdapter? = null
 
-    fun initialize(sessionId: String, profileId: String? = null, adapter: OpenCodeAdapter? = null) {
+    fun initialize(sessionId: String, profileId: String? = null, adapter: AgentAdapter? = null) {
         val effectiveAdapter = adapter ?: connectionManager.getAdapter()
         activeAdapter = effectiveAdapter
 
@@ -34,17 +34,20 @@ class ChatViewModel @Inject constructor(
                 ?: connectionManager.getActiveProfileId()
                 ?: ""
 
- val session = repository.getSession(resolvedProfileId, sessionId)
- val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
+            val session = repository.getSession(resolvedProfileId, sessionId)
+            val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
+            val agentType = session?.agentType ?: AgentType.OPENCODE
 
- _uiState.update { current ->
- val nextState = current.copy(
- sessionId = sessionId,
- profileId = resolvedProfileId,
- sessionTitle = title
- )
- syncNodesAndComposer(nextState)
- }
+            _uiState.update { current ->
+                val nextState = current.copy(
+                    sessionId = sessionId,
+                    profileId = resolvedProfileId,
+                    sessionTitle = title,
+                    runtimeName = agentType.displayName,
+                    agentType = agentType
+                )
+                syncNodesAndComposer(nextState)
+            }
 
  // 1. Observe hybrid message stream (Room + in-flight StateFlow)
  launch {

@@ -3,22 +3,32 @@ package com.pocketcli.feature.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.model.AgentType
 import com.pocketcli.core.ui.theme.ToolSuccessColor
 
 data class AgentSpec(
+    val type: AgentType,
     val name: String,
+    val icon: ImageVector,
     val protocol: String,
     val isSupported: Boolean,
     val version: String,
-    val description: String
+    val description: String,
+    val isConfigured: Boolean = false,
+    val onConfigure: () -> Unit
 )
 
 @Composable
@@ -26,34 +36,73 @@ fun AgentCardsList(
     onConfigureOpenCode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    AgentCardsList(
+        onConfigureOpenCode = onConfigureOpenCode,
+        onConfigureClaudeCode = {},
+        onConfigureAntigravity = {},
+        onConfigureCodex = {},
+        hasAnthropicKey = false,
+        hasGeminiKey = false,
+        hasOpenAiKey = false,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun AgentCardsList(
+    onConfigureOpenCode: () -> Unit,
+    onConfigureClaudeCode: () -> Unit,
+    onConfigureAntigravity: () -> Unit,
+    onConfigureCodex: () -> Unit,
+    hasAnthropicKey: Boolean,
+    hasGeminiKey: Boolean,
+    hasOpenAiKey: Boolean,
+    modifier: Modifier = Modifier
+) {
     val agents = listOf(
         AgentSpec(
+            type = AgentType.OPENCODE,
             name = "OpenCode",
+            icon = Icons.Default.SmartToy,
             protocol = "HTTP REST + SSE (Port 4096)",
             isSupported = true,
             version = "v1.2.27",
-            description = "Автономный рантайм в PRoot и подключение к удалённым серверам"
+            description = "Автономный рантайм в PRoot и подключение к удалённым серверам",
+            isConfigured = true,
+            onConfigure = onConfigureOpenCode
         ),
         AgentSpec(
+            type = AgentType.CLAUDE_CODE,
             name = "Claude Code",
-            protocol = "ACP JSON-RPC 2.0 (stdio)",
-            isSupported = false,
-            version = "Запланировано (Этап 3)",
-            description = "Адаптер Zed для Claude Code агента"
+            icon = Icons.Default.Bolt,
+            protocol = "ACP JSON-RPC 2.0 (stdio / remote)",
+            isSupported = true,
+            version = "ACP v1.0",
+            description = "Anthropic Claude Code агент через открытый протокол ACP (адаптер Zed / локальный процесс)",
+            isConfigured = hasAnthropicKey,
+            onConfigure = onConfigureClaudeCode
         ),
         AgentSpec(
+            type = AgentType.ANTIGRAVITY,
             name = "Gemini / Antigravity",
-            protocol = "ACP JSON-RPC 2.0 (stdio)",
-            isSupported = false,
-            version = "Запланировано (Этап 3)",
-            description = "Google DeepMind Advanced Agentic Coding"
+            icon = Icons.Default.AutoAwesome,
+            protocol = "ACP JSON-RPC 2.0 (stdio / remote)",
+            isSupported = true,
+            version = "ACP v1.0",
+            description = "Google DeepMind Advanced Agentic Coding агент с контекстным окном до 2M токенов",
+            isConfigured = hasGeminiKey,
+            onConfigure = onConfigureAntigravity
         ),
         AgentSpec(
+            type = AgentType.CODEX,
             name = "Codex",
+            icon = Icons.Default.Code,
             protocol = "ACP JSON-RPC 2.0 (stdio)",
-            isSupported = false,
-            version = "Запланировано (Этап 3)",
-            description = "Адаптер Zed для OpenAI Codex CLI"
+            isSupported = true,
+            version = "ACP v1.0",
+            description = "OpenAI Codex CLI агент через адаптер Zed",
+            isConfigured = hasOpenAiKey,
+            onConfigure = onConfigureCodex
         )
     )
 
@@ -77,7 +126,7 @@ fun AgentCardsList(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.SmartToy,
+                                imageVector = agent.icon,
                                 contentDescription = null,
                                 tint = if (agent.isSupported) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.size(24.dp)
@@ -90,9 +139,12 @@ fun AgentCardsList(
                         }
 
                         if (agent.isSupported) {
+                            val badgeColor = if (agent.isConfigured) ToolSuccessColor else MaterialTheme.colorScheme.primary
+                            val badgeText = if (agent.isConfigured) "Активен" else "Готов"
+
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = ToolSuccessColor.copy(alpha = 0.15f),
+                                color = badgeColor.copy(alpha = 0.15f),
                                 modifier = Modifier.height(24.dp)
                             ) {
                                 Row(
@@ -102,14 +154,14 @@ fun AgentCardsList(
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = ToolSuccessColor,
+                                        tint = badgeColor,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Активен",
+                                        text = badgeText,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = ToolSuccessColor
+                                        color = badgeColor
                                     )
                                 }
                             }
@@ -131,7 +183,7 @@ fun AgentCardsList(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Этап 3",
+                                        text = "Скоро",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.outline
                                     )
@@ -146,12 +198,34 @@ fun AgentCardsList(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "Протокол: ${agent.protocol} · ${agent.version}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedButton(
+                            onClick = agent.onConfigure,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Настроить",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
                 }
             }
         }

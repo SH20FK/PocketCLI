@@ -144,7 +144,13 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 AgentCardsList(
-                    onConfigureOpenCode = { runtimeViewModel.openProviderKeysDialog() }
+                    onConfigureOpenCode = { runtimeViewModel.openProviderKeysDialog() },
+                    onConfigureClaudeCode = { runtimeViewModel.openClaudeCodeDialog() },
+                    onConfigureAntigravity = { runtimeViewModel.openAntigravityDialog() },
+                    onConfigureCodex = { runtimeViewModel.openProviderKeysDialog() },
+                    hasAnthropicKey = !providerKeys["ANTHROPIC_API_KEY"].isNullOrBlank(),
+                    hasGeminiKey = !providerKeys["GEMINI_API_KEY"].isNullOrBlank(),
+                    hasOpenAiKey = !providerKeys["OPENAI_API_KEY"].isNullOrBlank()
                 )
             }
 
@@ -212,6 +218,24 @@ fun SettingsScreen(
                 currentKeys = providerKeys,
                 onSaveKey = { prov, key -> runtimeViewModel.saveProviderKey(prov, key) },
                 onDismiss = { runtimeViewModel.dismissProviderKeysDialog() }
+            )
+        }
+
+        // Claude Code Config Dialog
+        if (runtimeUiState.showClaudeCodeDialog) {
+            ClaudeCodeConfigDialog(
+                currentApiKey = providerKeys["ANTHROPIC_API_KEY"].orEmpty(),
+                onSaveKey = { runtimeViewModel.saveProviderKey("ANTHROPIC_API_KEY", it) },
+                onDismiss = { runtimeViewModel.dismissClaudeCodeDialog() }
+            )
+        }
+
+        // Gemini / Antigravity Config Dialog
+        if (runtimeUiState.showAntigravityDialog) {
+            AntigravityConfigDialog(
+                currentApiKey = providerKeys["GEMINI_API_KEY"].orEmpty(),
+                onSaveKey = { runtimeViewModel.saveProviderKey("GEMINI_API_KEY", it) },
+                onDismiss = { runtimeViewModel.dismissAntigravityDialog() }
             )
         }
     }

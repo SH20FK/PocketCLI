@@ -22,6 +22,8 @@ import javax.inject.Inject
 data class LocalRuntimeUiState(
     val showLogsDialog: Boolean = false,
     val showProviderKeysDialog: Boolean = false,
+    val showClaudeCodeDialog: Boolean = false,
+    val showAntigravityDialog: Boolean = false,
     val showOnboardingDialog: Boolean = false,
     val logFilterQuery: String = "",
     val errorMessage: String? = null
@@ -77,6 +79,22 @@ class LocalRuntimeViewModel @Inject constructor(
 
     fun dismissProviderKeysDialog() {
         _uiState.update { it.copy(showProviderKeysDialog = false) }
+    }
+
+    fun openClaudeCodeDialog() {
+        _uiState.update { it.copy(showClaudeCodeDialog = true) }
+    }
+
+    fun dismissClaudeCodeDialog() {
+        _uiState.update { it.copy(showClaudeCodeDialog = false) }
+    }
+
+    fun openAntigravityDialog() {
+        _uiState.update { it.copy(showAntigravityDialog = true) }
+    }
+
+    fun dismissAntigravityDialog() {
+        _uiState.update { it.copy(showAntigravityDialog = false) }
     }
 
     fun updateLogFilter(query: String) {

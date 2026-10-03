@@ -1,6 +1,7 @@
 package com.pocketcli.runtime.local
 
 import com.pocketcli.runtime.local.manifest.ManifestParser
+import java.io.File
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -181,5 +182,23 @@ class ManifestParserTest {
 
         val result = parser.parse(json)
         assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testParseProductionAssetManifest() {
+        val assetFile = listOf(
+            File("../../app/src/main/assets/local-runtime-manifest.json"),
+            File("../app/src/main/assets/local-runtime-manifest.json"),
+            File("app/src/main/assets/local-runtime-manifest.json")
+        ).find { it.exists() }
+
+        assertNotNull("Production local-runtime-manifest.json asset file must exist", assetFile)
+        val json = assetFile!!.readText(Charsets.UTF_8)
+        val result = parser.parse(json)
+        assertTrue("Production manifest must be parsed successfully without JSON errors: ${result.exceptionOrNull()?.message}", result.isSuccess)
+        val manifest = result.getOrThrow()
+        assertEquals(1, manifest.manifestVersion)
+        assertTrue(manifest.artifacts.containsKey("aarch64"))
+        assertTrue(manifest.artifacts.containsKey("x86_64"))
     }
 }

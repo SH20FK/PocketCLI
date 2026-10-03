@@ -14,7 +14,8 @@ data class ConnectionProfileEntity(
     val username: String = "opencode",
     val encryptedPassword: String = "",
     val allowCleartextHttp: Boolean = false,
-    val lastConnectedAt: Long = 0L
+    val lastConnectedAt: Long = 0L,
+    val agentType: String = "opencode"
 )
 
 @Entity(
@@ -65,7 +66,8 @@ data class SessionEntity(
     val title: String,
     val updatedAt: Long,
     val createdAt: Long,
-    val workspaceId: String? = null
+    val workspaceId: String? = null,
+    val agentType: String = "opencode"
 )
 
 @Entity(

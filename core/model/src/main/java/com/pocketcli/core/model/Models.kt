@@ -31,7 +31,8 @@ data class Session(
     val title: String,
     val updatedAt: Long,
     val createdAt: Long,
-    val workspaceId: String? = null
+    val workspaceId: String? = null,
+    val agentType: AgentType = AgentType.OPENCODE
 )
 
 @Serializable
@@ -105,5 +106,6 @@ data class ConnectionProfile(
     val url: String,
     val username: String = "opencode",
     val allowCleartextHttp: Boolean = false,
-    val lastConnectedAt: Long = 0L
+    val lastConnectedAt: Long = 0L,
+    val agentType: AgentType = AgentType.OPENCODE
 )

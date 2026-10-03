@@ -27,6 +27,7 @@ data class SessionsUiState(
     val showCreateDialog: Boolean = false,
     val showProjectPicker: Boolean = false,
     val newSessionTitle: String = "",
+    val selectedAgentType: AgentType = AgentType.OPENCODE,
     val errorMessage: String? = null
 )
 
@@ -138,14 +139,19 @@ class SessionsViewModel @Inject constructor(
         _uiState.update { it.copy(selectedWorkspaceId = workspaceId, showProjectPicker = false) }
     }
 
+    fun selectAgentType(agentType: AgentType) {
+        _uiState.update { it.copy(selectedAgentType = agentType) }
+    }
+
     fun createSession(onCreated: (String) -> Unit) {
         val title = _uiState.value.newSessionTitle.ifBlank { "Новый чат" }
         val selectedWsId = _uiState.value.selectedWorkspaceId
         val selectedWorkspace = _uiState.value.workspaces.find { it.id == selectedWsId }
+        val selectedAgent = _uiState.value.selectedAgentType
 
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingSession = true, errorMessage = null) }
-            val adapter = connectionManager.getAdapter()
+            val adapter = connectionManager.getAdapterFor(selectedAgent) ?: connectionManager.getAdapter()
             if (adapter == null) {
                 _uiState.update {
                     it.copy(
@@ -159,7 +165,10 @@ class SessionsViewModel @Inject constructor(
             val result = adapter.createSession(title, directory = selectedWorkspace?.localPath)
             result.fold(
                 onSuccess = { session ->
-                    val sessionWithWorkspace = session.copy(workspaceId = selectedWsId)
+                    val sessionWithWorkspace = session.copy(
+                        workspaceId = selectedWsId,
+                        agentType = selectedAgent
+                    )
                     repository.saveSession(sessionWithWorkspace)
                     selectedWsId?.let { wsId ->
                         workspaceRepository.touchWorkspace(wsId)

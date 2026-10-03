@@ -1,6 +1,9 @@
 package com.pocketcli.data.opencode.connection
 
+import com.pocketcli.core.model.AgentAdapter
+import com.pocketcli.core.model.AgentType
 import com.pocketcli.core.security.SecretStore
+import com.pocketcli.data.opencode.acp.AcpAdapter
 import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
 import com.pocketcli.data.opencode.api.BasicAuthInterceptor
 import com.pocketcli.data.opencode.api.CleartextHttpPolicyInterceptor
@@ -75,7 +78,7 @@ class ActiveConnectionManager(
     }
 
     @Synchronized
-    fun getAdapter(): OpenCodeAdapter? {
+    fun getOpenCodeAdapter(): OpenCodeAdapter? {
         cachedAdapter?.let { return it }
 
         var profile = _activeProfile.value
@@ -124,5 +127,29 @@ class ActiveConnectionManager(
         )
         cachedAdapter = adapter
         return adapter
+    }
+
+    fun getAdapterFor(agentType: AgentType): AgentAdapter? {
+        val baseAdapter = getOpenCodeAdapter() ?: return null
+        val profileId = _activeProfile.value?.id.orEmpty()
+        return when (agentType) {
+            AgentType.OPENCODE -> baseAdapter
+            AgentType.CLAUDE_CODE, AgentType.ANTIGRAVITY, AgentType.CODEX -> {
+                AcpAdapter(
+                    agentType = agentType,
+                    profileId = profileId,
+                    underlyingAdapter = baseAdapter
+                )
+            }
+        }
+    }
+
+    @Synchronized
+    fun getAdapter(): AgentAdapter? {
+        val profile = _activeProfile.value ?: runBlocking(Dispatchers.IO) {
+            profileDao.getAllList().firstOrNull()
+        } ?: return null
+        val agentType = AgentType.fromId(profile.agentType)
+        return getAdapterFor(agentType)
     }
 }

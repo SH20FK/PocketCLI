@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.model.AgentType
 import com.pocketcli.core.model.Session
 import com.pocketcli.core.ui.components.AgentActivityState
 import com.pocketcli.core.ui.components.PocketAppBarWithSearch
@@ -275,6 +276,55 @@ fun SessionsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "ИИ-агент",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            FilterChip(
+                                selected = uiState.selectedAgentType == AgentType.OPENCODE,
+                                onClick = { viewModel.selectAgentType(AgentType.OPENCODE) },
+                                label = { Text("OpenCode") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.SmartToy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                            FilterChip(
+                                selected = uiState.selectedAgentType == AgentType.CLAUDE_CODE,
+                                onClick = { viewModel.selectAgentType(AgentType.CLAUDE_CODE) },
+                                label = { Text("Claude") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                            FilterChip(
+                                selected = uiState.selectedAgentType == AgentType.ANTIGRAVITY,
+                                onClick = { viewModel.selectAgentType(AgentType.ANTIGRAVITY) },
+                                label = { Text("Antigravity") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                        }
+                    }
+
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -383,6 +433,35 @@ fun SessionItemCard(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.height(20.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        ) {
+                            val (agentIcon, agentTint) = when (session.agentType) {
+                                AgentType.CLAUDE_CODE -> Icons.Default.Bolt to MaterialTheme.colorScheme.primary
+                                AgentType.ANTIGRAVITY -> Icons.Default.AutoAwesome to MaterialTheme.colorScheme.tertiary
+                                AgentType.CODEX -> Icons.Default.Code to MaterialTheme.colorScheme.secondary
+                                AgentType.OPENCODE -> Icons.Default.SmartToy to MaterialTheme.colorScheme.primary
+                            }
+                            Icon(
+                                imageVector = agentIcon,
+                                contentDescription = null,
+                                modifier = Modifier.size(10.dp),
+                                tint = agentTint
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = session.agentType.displayName,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = formattedDate,
                         style = MaterialTheme.typography.bodySmall,

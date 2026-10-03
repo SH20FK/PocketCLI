@@ -104,7 +104,8 @@ class AgentSessionRepository @Inject constructor(
                     title = it.title,
                     updatedAt = it.updatedAt,
                     createdAt = it.createdAt,
-                    workspaceId = it.workspaceId
+                    workspaceId = it.workspaceId,
+                    agentType = AgentType.fromId(it.agentType)
                 )
             }
         }
@@ -118,7 +119,8 @@ class AgentSessionRepository @Inject constructor(
                 title = session.title,
                 updatedAt = session.updatedAt,
                 createdAt = session.createdAt,
-                workspaceId = session.workspaceId
+                workspaceId = session.workspaceId,
+                agentType = session.agentType.id
             )
         )
     }
@@ -135,7 +137,8 @@ class AgentSessionRepository @Inject constructor(
                 title = it.title,
                 updatedAt = it.updatedAt,
                 createdAt = it.createdAt,
-                workspaceId = it.workspaceId
+                workspaceId = it.workspaceId,
+                agentType = AgentType.fromId(it.agentType)
             )
         }
     }
