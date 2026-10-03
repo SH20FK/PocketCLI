@@ -314,15 +314,15 @@ class ChatViewModel @Inject constructor(
  }
 
  state.activeDiffFile?.let { (path, diff) ->
- nodes.add(ChatNode.DiffNode(id = diff_, filePath = path, diffContent = diff))
+ nodes.add(ChatNode.DiffNode(id = "diff_$path", filePath = path, diffContent = diff))
  }
 
  state.pendingPermission?.let { perm ->
- nodes.add(ChatNode.PermissionNode(id = perm_, request = perm))
+ nodes.add(ChatNode.PermissionNode(id = "perm_${perm.requestId}", request = perm))
  }
 
  if (state.streamingTail != null && state.sessionState == SessionState.BUSY) {
- nodes.add(ChatNode.StreamingTailNode(id = tail_, tail = state.streamingTail))
+ nodes.add(ChatNode.StreamingTailNode(id = "tail_${state.streamingTail.messageId}", tail = state.streamingTail))
  }
 
  val mode = when {
