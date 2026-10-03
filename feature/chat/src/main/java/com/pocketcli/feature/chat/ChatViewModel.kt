@@ -125,7 +125,7 @@ class ChatViewModel @Inject constructor(
  _uiState.update { current ->
  val tail = StreamingTailUi(
  messageId = event.messageId,
- visibleText = ,
+ visibleText = "",
  phase = AgentPhase.EXECUTING_TOOL,
  currentTool = ToolSummary(
  callId = event.callId,
@@ -215,7 +215,7 @@ class ChatViewModel @Inject constructor(
  viewModelScope.launch {
  _uiState.update { current ->
  val nextState = current.copy(
- composerDraft = ,
+ composerDraft = "",
  attachments = emptyList(),
  sessionState = SessionState.BUSY,
  errorMessage = null

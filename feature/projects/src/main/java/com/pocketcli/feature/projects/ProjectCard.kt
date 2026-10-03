@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.pocketcli.core.model.GitStatus
+import com.pocketcli.core.model.WorkspaceGitStatus
 import com.pocketcli.core.model.Workspace
 import com.pocketcli.core.model.WorkspaceSourceType
 import com.pocketcli.core.model.WorkspaceWithDetails
@@ -269,7 +269,7 @@ fun ProjectCardPreview() {
                         sourceType = WorkspaceSourceType.CREATED,
                         lastOpenedAt = System.currentTimeMillis()
                     ),
-                    gitStatus = GitStatus(isGitRepo = true, branch = "main", isDirty = true),
+                    gitStatus = WorkspaceGitStatus(isGitRepo = true, branch = "main", isDirty = true),
                     sessionCount = 3
                 ),
                 onClick = {},
