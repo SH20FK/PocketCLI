@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat
+package com.pocketcli.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

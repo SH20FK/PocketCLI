@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.db
+package com.pocketcli.data.opencode.db
 
 import androidx.room.Dao
 import androidx.room.Database

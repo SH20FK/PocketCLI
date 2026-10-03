@@ -1,4 +1,4 @@
-﻿package com.pocketcli
+package com.pocketcli
 
 import android.app.Application
 import android.app.NotificationChannel

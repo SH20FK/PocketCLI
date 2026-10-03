@@ -1,1 +1,1 @@
-﻿# PocketCLI
+# PocketCLI

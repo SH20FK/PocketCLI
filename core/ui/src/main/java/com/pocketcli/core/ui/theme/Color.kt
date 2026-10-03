@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.theme
+package com.pocketcli.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

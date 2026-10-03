@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.adapter
+package com.pocketcli.data.opencode.adapter
 
 import com.pocketcli.core.model.*
 import com.pocketcli.data.opencode.api.*

@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.api
+package com.pocketcli.data.opencode.api
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement

@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode
+package com.pocketcli.data.opencode
 
 import com.pocketcli.data.opencode.db.DbSanitizer
 import org.junit.Assert.*

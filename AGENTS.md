@@ -1,4 +1,4 @@
-﻿# Supported Agents and Protocols
+# Supported Agents and Protocols
 
 ## 1. OpenCode
 - **Протокол**: HTTP REST + Server-Sent Events (SSE).

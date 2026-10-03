@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.sse
+package com.pocketcli.data.opencode.sse
 
 import com.pocketcli.data.opencode.api.OpenCodeEventDto
 import kotlinx.coroutines.channels.awaitClose

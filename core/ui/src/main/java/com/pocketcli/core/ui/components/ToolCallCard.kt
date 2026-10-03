@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

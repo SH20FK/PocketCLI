@@ -1,3 +1,3 @@
-﻿#!/bin/sh
+#!/bin/sh
 set -e
 exec gradle "$@"

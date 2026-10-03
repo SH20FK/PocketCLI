@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.sessions
+package com.pocketcli.feature.sessions
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

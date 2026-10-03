@@ -1,4 +1,4 @@
-﻿package com.pocketcli
+package com.pocketcli
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

@@ -1,4 +1,4 @@
-﻿package com.pocketcli.runtime.remote
+package com.pocketcli.runtime.remote
 
 import com.pocketcli.core.model.HealthInfo
 import com.pocketcli.core.model.Transport

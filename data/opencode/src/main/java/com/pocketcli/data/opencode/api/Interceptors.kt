@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.api
+package com.pocketcli.data.opencode.api
 
 import okhttp3.Credentials
 import okhttp3.Interceptor

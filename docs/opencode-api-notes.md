@@ -1,4 +1,4 @@
-﻿# Заметки по OpenCode HTTP & SSE API (v1.2.27)
+# Заметки по OpenCode HTTP & SSE API (v1.2.27)
 
 Результаты исследования живого сервера `opencode serve` в рамках **Этапа 0** проекта PocketCLI.
 

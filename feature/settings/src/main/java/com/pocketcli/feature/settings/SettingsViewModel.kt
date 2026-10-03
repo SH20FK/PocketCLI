@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.settings
+package com.pocketcli.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

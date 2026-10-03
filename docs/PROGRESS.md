@@ -1,4 +1,4 @@
-﻿# Progress & Verification Log
+# Progress & Verification Log
 
 ## Этап 0 — Исследование API (Завершён)
 - [x] Запущен живой сервер `opencode serve` (v1.2.27).

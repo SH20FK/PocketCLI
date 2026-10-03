@@ -1,4 +1,4 @@
-﻿# Third-Party Notices and Licenses
+# Third-Party Notices and Licenses
 
 This project includes or interfaces with several open-source libraries and specifications.
 

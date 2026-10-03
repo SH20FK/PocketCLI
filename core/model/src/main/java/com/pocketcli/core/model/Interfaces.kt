@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.model
+package com.pocketcli.core.model
 
 import kotlinx.coroutines.flow.Flow
 

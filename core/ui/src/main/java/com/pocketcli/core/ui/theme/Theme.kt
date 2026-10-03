@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.theme
+package com.pocketcli.core.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

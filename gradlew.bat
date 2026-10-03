@@ -1,2 +1,2 @@
-﻿@rem Simple Gradle wrapper proxy for CLI/CI
+@rem Simple Gradle wrapper proxy for CLI/CI
 @gradle %*

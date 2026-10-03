@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.di
+package com.pocketcli.data.opencode.di
 
 import android.content.Context
 import androidx.room.Room

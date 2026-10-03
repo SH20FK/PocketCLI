@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.sessions
+package com.pocketcli.feature.sessions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

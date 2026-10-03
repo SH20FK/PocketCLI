@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.security
+package com.pocketcli.core.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

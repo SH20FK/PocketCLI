@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode.api
+package com.pocketcli.data.opencode.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

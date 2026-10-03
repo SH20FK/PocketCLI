@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.security
+package com.pocketcli.core.security
 
 import dagger.Binds
 import dagger.Module

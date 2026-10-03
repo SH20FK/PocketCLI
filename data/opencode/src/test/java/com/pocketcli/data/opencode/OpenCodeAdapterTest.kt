@@ -1,4 +1,4 @@
-﻿package com.pocketcli.data.opencode
+package com.pocketcli.data.opencode
 
 import app.cash.turbine.test
 import com.pocketcli.core.model.PermissionOption

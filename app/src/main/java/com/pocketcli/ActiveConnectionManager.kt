@@ -1,4 +1,4 @@
-﻿package com.pocketcli
+package com.pocketcli
 
 import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
