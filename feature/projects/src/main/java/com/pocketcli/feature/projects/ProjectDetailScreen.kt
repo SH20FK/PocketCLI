@@ -108,9 +108,10 @@ fun ProjectDetailScreen(
                             )
                         }
                     }
-                )
-            }
-        },
+                }
+            )
+        }
+    },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 text = { Text("Новый чат") },
