@@ -12,12 +12,13 @@ import javax.inject.Singleton
 
 @Singleton
 class ApkVerifier(
-    private val context: Context?
+    private val context: Context?,
+    @Suppress("UNUSED_PARAMETER") marker: Unit = Unit
 ) {
     @Inject
-    constructor(@ApplicationContext context: Context) : this(context as Context?)
+    constructor(@ApplicationContext context: Context) : this(context, Unit)
 
-    constructor() : this(null)
+    constructor() : this(null, Unit)
 
     suspend fun verifyApk(
         apkFile: File,

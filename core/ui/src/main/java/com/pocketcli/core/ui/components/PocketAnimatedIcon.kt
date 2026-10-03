@@ -5,12 +5,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.pocketcli.core.ui.theme.PocketMotion
 
 enum class IconState {
@@ -62,13 +68,13 @@ fun PocketAnimatedIcon(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Pocket Animated Icon Preview")
+@Preview(name = "Pocket Animated Icon Preview")
 @Composable
 fun PocketAnimatedIconPreview() {
-    androidx.compose.material3.Surface {
-        androidx.compose.foundation.layout.Row(
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
-            modifier = androidx.compose.foundation.layout.Modifier.padding(16.dp)
+    Surface {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(16.dp)
         ) {
             PocketAnimatedIcon(state = IconState.SEND, contentDescription = "Send")
             PocketAnimatedIcon(state = IconState.STOP, contentDescription = "Stop")
