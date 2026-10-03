@@ -132,3 +132,4 @@
   - **Run 37109852203** (Веха 4 RuntimeInstaller) — SUCCESS
   - **Run 37111805723** (Веха 5 Supervisor & Service) — SUCCESS
   - **Run 37112584531** (Веха 6 Onboarding & Settings UI) — SUCCESS
+  - **Run 37120626978** (Этап 3 Полный UI/UX Flow, Material 3 Expressive и OTA Обновления) — SUCCESS (Артефакт `pocketcli-debug-apk` собран, все тесты пройдены)
