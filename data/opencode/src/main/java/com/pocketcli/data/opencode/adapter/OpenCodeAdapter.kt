@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToString
 
 class OpenCodeAdapter(
     private val apiClient: OpenCodeApiClient,
@@ -98,7 +97,7 @@ class OpenCodeAdapter(
                                 "error" -> ToolStatus.ERROR
                                 else -> ToolStatus.PENDING
                             }
-                            val inputStr = part.state?.input?.let { json.encodeToString(it) }
+                            val inputStr = part.state?.input?.toString()
                             AgentEvent.ToolCallUpdate(
                                 messageId = part.messageID ?: "",
                                 callId = part.callID ?: part.id,
