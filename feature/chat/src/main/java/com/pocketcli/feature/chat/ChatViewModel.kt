@@ -70,10 +70,6 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun initialize(profileId: String, sessionId: String, adapter: OpenCodeAdapter) {
-        initialize(sessionId = sessionId, profileId = profileId, adapter = adapter)
-    }
-
     fun onDraftChange(text: String) {
         _uiState.update { it.copy(composerDraft = text) }
     }
