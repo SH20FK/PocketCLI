@@ -50,6 +50,50 @@ class AgentSessionRepository @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlightMessages = MutableStateFlow<Map<String, StreamingMessageState>>(emptyMap())
 
+    fun getActiveSessionIds(): StateFlow<Set<String>> {
+        return inFlightMessages
+            .map { it.keys }
+            .stateIn(scope, SharingStarted.Eagerly, emptySet())
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun getActiveSessionInfo(): Flow<ActiveSessionInfo?> {
+        return inFlightMessages.transformLatest { map ->
+            val firstInFlight = map.values.firstOrNull()
+            if (firstInFlight == null) {
+                emit(null)
+                return@transformLatest
+            }
+            val session = database.sessionDao().getSessionBySessionId(firstInFlight.sessionId)
+            val projectName = if (session?.workspaceId != null) {
+                database.workspaceDao().getById(session.workspaceId)?.displayName ?: session.title
+            } else {
+                session?.title?.takeIf { it.isNotBlank() } ?: "Сессия"
+            }
+            val runningTool = firstInFlight.activeToolCalls.values.findLast { it.status == ToolStatus.RUNNING }
+                ?: firstInFlight.activeToolCalls.values.lastOrNull()
+            val action = when {
+                runningTool != null -> "Выполняет ${runningTool.name}"
+                firstInFlight.reasoning?.isNotEmpty() == true && firstInFlight.text.isEmpty() -> "Размышляет..."
+                firstInFlight.text.isNotEmpty() -> "Печатает ответ..."
+                else -> "Обработка запроса..."
+            }
+            while (true) {
+                val elapsed = (System.currentTimeMillis() - firstInFlight.timestamp) / 1000
+                emit(
+                    ActiveSessionInfo(
+                        sessionId = firstInFlight.sessionId,
+                        profileId = firstInFlight.profileId,
+                        projectName = projectName,
+                        currentAction = action,
+                        elapsedSeconds = elapsed.coerceAtLeast(0)
+                    )
+                )
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+
     fun getSessions(profileId: String): Flow<List<Session>> {
         return database.sessionDao().getSessions(profileId).map { entities ->
             entities.map {

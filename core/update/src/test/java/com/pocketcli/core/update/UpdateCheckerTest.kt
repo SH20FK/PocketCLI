@@ -5,33 +5,60 @@ import org.junit.Test
 
 class UpdateCheckerTest {
 
-    @Test
-    fun `test versionCode comparison identifies available update`() {
-        val currentCode = 1000000L
-        val manifestCode = 1005000L
+    private val checker = UpdateChecker()
 
-        val isUpdate = manifestCode > currentCode
-        assertTrue(isUpdate)
+    @Test
+    fun `test isUpdateAvailable returns true when manifest code is greater`() {
+        val manifest = UpdateManifest(
+            versionName = "1.5.0",
+            versionCode = 1005000L,
+            tag = "v1.5.0",
+            apk = ApkAsset(name = "test.apk", url = "https://github.com/SH20FK/PocketCLI/test.apk", size = 1000L, sha256 = "abc")
+        )
+
+        assertTrue(checker.isUpdateAvailable(1000000L, manifest))
+        assertFalse(checker.isUpdateAvailable(1005000L, manifest))
+        assertFalse(checker.isUpdateAvailable(1006000L, manifest))
     }
 
     @Test
-    fun `test versionCode comparison identifies up to date`() {
-        val currentCode = 1005000L
-        val manifestCode = 1005000L
+    fun `test isCompatible checks minSupportedVersionCode`() {
+        val manifest = UpdateManifest(
+            versionName = "2.0.0",
+            versionCode = 2000000L,
+            tag = "v2.0.0",
+            minSupportedVersionCode = 1005000L,
+            apk = ApkAsset(name = "test.apk", url = "https://github.com/SH20FK/PocketCLI/test.apk", size = 1000L, sha256 = "abc")
+        )
 
-        val isUpdate = manifestCode > currentCode
-        assertFalse(isUpdate)
+        assertTrue(checker.isCompatible(1005000L, manifest))
+        assertTrue(checker.isCompatible(1006000L, manifest))
+        assertFalse(checker.isCompatible(1004000L, manifest))
     }
 
     @Test
     fun `test SemVer formula correctly matches specification`() {
-        // Spec formula: MAJOR * 1_000_000 + MINOR * 1_000 + PATCH
-        val major = 1
-        val minor = 5
-        val patch = 0
-        val expectedCode = 1005000L
+        val computedCode = checker.computeVersionCode(major = 1, minor = 5, patch = 0)
+        assertEquals(1005000L, computedCode)
 
-        val computedCode = major * 1_000_000L + minor * 1_000L + patch.toLong()
-        assertEquals(expectedCode, computedCode)
+        val computedCode2 = checker.computeVersionCode(major = 0, minor = 3, patch = 2)
+        assertEquals(3002L, computedCode2)
+    }
+
+    @Test
+    fun `test shouldNotify handles skipped versions unless critical`() {
+        val manifest = UpdateManifest(
+            versionName = "1.5.0",
+            versionCode = 1005000L,
+            tag = "v1.5.0",
+            critical = false,
+            apk = ApkAsset(name = "test.apk", url = "https://github.com/SH20FK/PocketCLI/test.apk", size = 1000L, sha256 = "abc")
+        )
+
+        assertFalse(checker.shouldNotify(manifest, skippedTag = "v1.5.0"))
+        assertTrue(checker.shouldNotify(manifest, skippedTag = "v1.4.0"))
+
+        val criticalManifest = manifest.copy(critical = true)
+        assertTrue(checker.shouldNotify(criticalManifest, skippedTag = "v1.5.0"))
     }
 }

@@ -19,6 +19,7 @@ data class SessionsUiState(
     val sessions: List<Session> = emptyList(),
     val workspaces: List<Workspace> = emptyList(),
     val workspacesWithDetails: List<WorkspaceWithDetails> = emptyList(),
+    val activeSessionIds: Set<String> = emptySet(),
     val selectedWorkspaceId: String? = null,
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
@@ -42,6 +43,11 @@ class SessionsViewModel @Inject constructor(
     private var lastDeletedSession: Session? = null
 
     init {
+        viewModelScope.launch {
+            repository.getActiveSessionIds().collect { activeIds ->
+                _uiState.update { it.copy(activeSessionIds = activeIds) }
+            }
+        }
         viewModelScope.launch {
             connectionManager.activeProfile.collectLatest { profile ->
                 _uiState.update {

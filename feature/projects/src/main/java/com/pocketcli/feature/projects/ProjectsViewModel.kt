@@ -331,6 +331,10 @@ class ProjectsViewModel @Inject constructor(
         }
     }
 
+    fun resetCloneStage() {
+        _uiState.update { it.copy(cloneStage = CloneStage.IDLE, errorMessage = null) }
+    }
+
     fun toggleArchiveWorkspace(id: String, currentArchived: Boolean) {
         viewModelScope.launch {
             try {

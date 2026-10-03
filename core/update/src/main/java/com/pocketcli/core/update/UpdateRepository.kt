@@ -20,6 +20,7 @@ sealed interface UpdateCheckResult {
 class UpdateRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val releaseApi: GitHubReleaseApi,
+    private val updateChecker: UpdateChecker,
     private val downloader: ApkDownloader,
     private val verifier: ApkVerifier,
     private val installer: ApkInstaller
@@ -43,7 +44,7 @@ class UpdateRepository @Inject constructor(
         val result = releaseApi.fetchLatestManifest(channel = channel)
         result.fold(
             onSuccess = { manifest ->
-                if (manifest.versionCode > currentVersionCode) {
+                if (updateChecker.isUpdateAvailable(currentVersionCode, manifest)) {
                     UpdateCheckResult.UpdateAvailable(manifest)
                 } else {
                     UpdateCheckResult.UpToDate(currentVersionCode)

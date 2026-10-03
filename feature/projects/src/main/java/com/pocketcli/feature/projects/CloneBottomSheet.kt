@@ -30,7 +30,8 @@ fun CloneBottomSheet(
     cloneLog: List<String>,
     onDismiss: () -> Unit,
     onClone: (url: String, name: String, branch: String, token: String?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onResetStage: () -> Unit = {}
 ) {
     var url by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
@@ -74,7 +75,13 @@ fun CloneBottomSheet(
                     stage = cloneStage,
                     logs = cloneLog,
                     showLog = showLog,
-                    onToggleShowLog = { showLog = !showLog }
+                    onToggleShowLog = { showLog = !showLog },
+                    onRetry = {
+                        onClone(url, name, branch, if (token.isBlank()) null else token)
+                    },
+                    onEditInputs = {
+                        onResetStage()
+                    }
                 )
             } else {
                 // Steps 1-3 Form
@@ -181,11 +188,19 @@ fun CloneProgressCard(
     logs: List<String>,
     showLog: Boolean,
     onToggleShowLog: () -> Unit,
+    onRetry: () -> Unit = {},
+    onEditInputs: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(
+            containerColor = if (stage == CloneStage.ERROR) {
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+        ),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -194,57 +209,99 @@ fun CloneProgressCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = "Подготовка репозитория",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            val stages = listOf(
-                Pair(CloneStage.CHECK_URL, "Проверка URL"),
-                Pair(CloneStage.CONNECTING, "Подключение"),
-                Pair(CloneStage.FETCHING_OBJECTS, "Получение объектов"),
-                Pair(CloneStage.UNPACKING, "Распаковка"),
-                Pair(CloneStage.VERIFYING_GIT, "Проверка Git"),
-                Pair(CloneStage.READY, "Готово")
-            )
-
-            val currentStageIndex = stages.indexOfFirst { it.first == stage }
-
-            for ((index, item) in stages.withIndex()) {
-                val (stageEnum, label) = item
-                val isCompleted = currentStageIndex > index || stage == CloneStage.READY
-                val isCurrent = currentStageIndex == index && stage != CloneStage.READY
-
+            if (stage == CloneStage.ERROR) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = ToolSuccessColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    } else if (isCurrent) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "Ошибка",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "Не удалось клонировать репозиторий",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                Text(
+                    text = logs.lastOrNull { it.startsWith("Ошибка:") } ?: "Произошла ошибка при подготовке репозитория.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onEditInputs,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Изменить данные")
+                    }
+                    Button(
+                        onClick = onRetry,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Повторить")
+                    }
+                }
+            } else {
+                Text(
+                    text = "Подготовка репозитория",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                val stages = listOf(
+                    Pair(CloneStage.CHECK_URL, "Проверка URL"),
+                    Pair(CloneStage.CONNECTING, "Подключение"),
+                    Pair(CloneStage.FETCHING_OBJECTS, "Получение объектов"),
+                    Pair(CloneStage.UNPACKING, "Распаковка"),
+                    Pair(CloneStage.VERIFYING_GIT, "Проверка Git"),
+                    Pair(CloneStage.READY, "Готово")
+                )
+
+                val currentStageIndex = stages.indexOfFirst { it.first == stage }
+
+                for ((index, item) in stages.withIndex()) {
+                    val (stageEnum, label) = item
+                    val isCompleted = currentStageIndex > index || stage == CloneStage.READY
+                    val isCurrent = currentStageIndex == index && stage != CloneStage.READY
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (isCompleted) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = ToolSuccessColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else if (isCurrent) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+                        }
+
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isCompleted || isCurrent) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isCompleted || isCurrent) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 

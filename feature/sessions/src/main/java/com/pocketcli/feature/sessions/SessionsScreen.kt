@@ -49,12 +49,12 @@ fun SessionsScreen(
         }
     }
 
-    val activeSessions = remember(filteredSessions) {
-        filteredSessions.take(2)
+    val activeSessions = remember(filteredSessions, uiState.activeSessionIds) {
+        filteredSessions.filter { uiState.activeSessionIds.contains(it.id) }
     }
 
-    val recentSessions = remember(filteredSessions) {
-        if (filteredSessions.size > 2) filteredSessions.drop(2) else emptyList()
+    val recentSessions = remember(filteredSessions, uiState.activeSessionIds) {
+        filteredSessions.filter { !uiState.activeSessionIds.contains(it.id) }
     }
 
     Scaffold(

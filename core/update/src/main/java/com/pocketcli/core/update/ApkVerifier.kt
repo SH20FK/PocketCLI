@@ -1,5 +1,7 @@
 package com.pocketcli.core.update
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -9,12 +11,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ApkVerifier @Inject constructor() {
+class ApkVerifier(
+    private val context: Context?
+) {
+    @Inject
+    constructor(@ApplicationContext context: Context) : this(context as Context?)
+
+    constructor() : this(null)
 
     suspend fun verifyApk(
         apkFile: File,
         expectedSha256: String,
-        expectedSize: Long? = null
+        expectedSize: Long? = null,
+        expectedPackageName: String? = "com.pocketcli",
+        minVersionCode: Long? = null
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         if (!apkFile.exists()) {
             return@withContext Result.failure(IllegalArgumentException("Файл APK не найден: ${apkFile.absolutePath}"))
@@ -41,6 +51,28 @@ class ApkVerifier @Inject constructor() {
                 return@withContext Result.failure(
                     SecurityException("Контрольная сумма SHA-256 не совпадает!\nОжидалось: $expectedSha256\nПолучено: $calculatedSha")
                 )
+            }
+
+            // Optional Android package verification when running in Android environment
+            context?.let { ctx ->
+                try {
+                    val archiveInfo = ctx.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+                    if (archiveInfo != null) {
+                        val expectedPkg = expectedPackageName ?: ctx.packageName
+                        if (archiveInfo.packageName != expectedPkg && !archiveInfo.packageName.startsWith("com.pocketcli")) {
+                            return@withContext Result.failure(
+                                SecurityException("Имя пакета в APK (${archiveInfo.packageName}) не совпадает с ожидаемым ($expectedPkg)")
+                            )
+                        }
+                        if (minVersionCode != null && archiveInfo.longVersionCode <= minVersionCode) {
+                            return@withContext Result.failure(
+                                SecurityException("Номер версии в APK (${archiveInfo.longVersionCode}) должен быть строго больше установленного ($minVersionCode)")
+                            )
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Ignored in unit testing environments where PackageManager is unavailable
+                }
             }
 
             Result.success(true)

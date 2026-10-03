@@ -24,10 +24,31 @@ data class DownloadProgress(
 class ApkDownloader @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
+    fun validateDownloadUrl(url: String): Boolean {
+        return try {
+            val uri = java.net.URI(url)
+            val scheme = uri.scheme?.lowercase()
+            val host = uri.host?.lowercase()
+            scheme == "https" && (
+                host == "github.com" ||
+                host?.endsWith(".github.com") == true ||
+                host == "objects.githubusercontent.com" ||
+                host == "raw.githubusercontent.com"
+            )
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun downloadApk(
         downloadUrl: String,
         destinationFile: File
     ): Flow<DownloadProgress> = flow {
+        if (!validateDownloadUrl(downloadUrl)) {
+            throw SecurityException("Недопустимый URL для скачивания обновления: $downloadUrl. Разрешены только HTTPS URL на github.com и objects.githubusercontent.com")
+        }
+
+        destinationFile.parentFile?.mkdirs()
         val existingBytes = if (destinationFile.exists()) destinationFile.length() else 0L
 
         val requestBuilder = Request.Builder()

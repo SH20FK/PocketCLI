@@ -19,14 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-
-data class ActiveSessionInfo(
-    val sessionId: String,
-    val profileId: String,
-    val projectName: String,
-    val currentAction: String,
-    val elapsedSeconds: Long = 0L
-)
+import com.pocketcli.core.model.ActiveSessionInfo
 
 @Composable
 fun ActiveSessionBar(

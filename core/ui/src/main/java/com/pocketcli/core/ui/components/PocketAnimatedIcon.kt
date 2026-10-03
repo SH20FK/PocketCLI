@@ -22,7 +22,8 @@ enum class IconState {
     SYNC,
     CHECK,
     VISIBILITY_ON,
-    VISIBILITY_OFF
+    VISIBILITY_OFF,
+    MIC
 }
 
 @Composable
@@ -50,6 +51,7 @@ fun PocketAnimatedIcon(
             IconState.CHECK -> Icons.Default.Check
             IconState.VISIBILITY_ON -> Icons.Default.Visibility
             IconState.VISIBILITY_OFF -> Icons.Default.VisibilityOff
+            IconState.MIC -> Icons.Default.Mic
         }
         Icon(
             imageVector = icon,
@@ -57,5 +59,21 @@ fun PocketAnimatedIcon(
             modifier = modifier,
             tint = tint
         )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Pocket Animated Icon Preview")
+@Composable
+fun PocketAnimatedIconPreview() {
+    androidx.compose.material3.Surface {
+        androidx.compose.foundation.layout.Row(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+            modifier = androidx.compose.foundation.layout.Modifier.padding(16.dp)
+        ) {
+            PocketAnimatedIcon(state = IconState.SEND, contentDescription = "Send")
+            PocketAnimatedIcon(state = IconState.STOP, contentDescription = "Stop")
+            PocketAnimatedIcon(state = IconState.PLAY, contentDescription = "Play")
+            PocketAnimatedIcon(state = IconState.MIC, contentDescription = "Mic")
+        }
     }
 }

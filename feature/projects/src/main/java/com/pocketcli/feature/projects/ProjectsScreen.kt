@@ -172,7 +172,8 @@ fun ProjectsScreen(
                     viewModel.cloneWorkspace(url, name, branch, token) { ws ->
                         onProjectClick(ws.id)
                     }
-                }
+                },
+                onResetStage = { viewModel.resetCloneStage() }
             )
         }
 

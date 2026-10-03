@@ -24,6 +24,7 @@ import com.pocketcli.core.ui.theme.DiffAddedBackgroundLight
 import com.pocketcli.core.ui.theme.DiffRemovedBackgroundDark
 import com.pocketcli.core.ui.theme.DiffRemovedBackgroundLight
 import com.pocketcli.core.ui.theme.MonospaceCodeStyle
+import com.pocketcli.core.ui.theme.ToolSuccessColor
 
 data class DiffHunkLine(
     val type: DiffLineType,
@@ -82,7 +83,7 @@ fun DiffSummaryCard(
                 Text(
                     text = "+$addedLines",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF2E7D32)
+                    color = ToolSuccessColor
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
@@ -179,16 +180,39 @@ fun FileDiffViewer(
     }
 }
 
-private fun parseUnifiedDiff(raw: String): List<DiffHunkLine> {
+internal fun parseUnifiedDiff(raw: String): List<DiffHunkLine> {
     val result = mutableListOf<DiffHunkLine>()
     var oldLine = 1
     var newLine = 1
+    var inHunk = false
+    val hunkHeaderRegex = Regex("""^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@(.*)$""")
 
     for (rawLine in raw.lines()) {
+        val hunkMatch = hunkHeaderRegex.find(rawLine)
+        if (hunkMatch != null) {
+            inHunk = true
+            oldLine = hunkMatch.groupValues[1].toIntOrNull() ?: 1
+            newLine = hunkMatch.groupValues[2].toIntOrNull() ?: 1
+            result.add(DiffHunkLine(DiffLineType.HEADER, null, null, rawLine))
+            continue
+        }
+
+        // File headers before or between hunks
+        if (rawLine.startsWith("---") || rawLine.startsWith("+++") ||
+            rawLine.startsWith("diff ") || rawLine.startsWith("index ") ||
+            rawLine.startsWith("new file ") || rawLine.startsWith("deleted file ") ||
+            rawLine.startsWith("\\ No newline")
+        ) {
+            result.add(DiffHunkLine(DiffLineType.HEADER, null, null, rawLine))
+            continue
+        }
+
+        if (!inHunk) {
+            result.add(DiffHunkLine(DiffLineType.HEADER, null, null, rawLine))
+            continue
+        }
+
         when {
-            rawLine.startsWith("@@") -> {
-                result.add(DiffHunkLine(DiffLineType.HEADER, null, null, rawLine))
-            }
             rawLine.startsWith("+") -> {
                 result.add(DiffHunkLine(DiffLineType.ADDED, null, newLine++, rawLine))
             }

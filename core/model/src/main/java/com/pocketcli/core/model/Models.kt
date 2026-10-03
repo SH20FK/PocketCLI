@@ -35,6 +35,15 @@ data class Session(
 )
 
 @Serializable
+data class ActiveSessionInfo(
+    val sessionId: String,
+    val profileId: String,
+    val projectName: String,
+    val currentAction: String,
+    val elapsedSeconds: Long = 0L
+)
+
+@Serializable
 enum class WorkspaceSourceType {
     CREATED,
     CLONED,

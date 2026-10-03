@@ -124,11 +124,11 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding()
             ) {
                 // Optional error banner
                 uiState.errorMessage?.let { error ->
@@ -262,11 +262,14 @@ fun ChatScreen(
         // Permission Details Bottom Sheet
         if (uiState.showPermissionDetails && uiState.pendingPermission != null) {
             val perm = uiState.pendingPermission!!
+            val associatedToolCall = perm.callId?.let { cid ->
+                uiState.messages.flatMap { it.toolCalls }.find { it.callId == cid }
+            }
             PermissionDetailsSheet(
                 requestId = perm.requestId,
                 title = perm.title,
-                commandOrPayload = null,
-                workingDirectory = null,
+                commandOrPayload = associatedToolCall?.inputJson ?: associatedToolCall?.output,
+                workingDirectory = if (uiState.workspaceName.isNotBlank() && uiState.workspaceName != "Локально") uiState.workspaceName else null,
                 onReply = { reqId, opt -> viewModel.respondPermission(reqId, opt) },
                 onDismiss = { viewModel.dismissPermissionDetails() }
             )

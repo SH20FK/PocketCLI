@@ -51,4 +51,26 @@ class ApkVerifierTest {
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IllegalStateException)
     }
+
+    @Test
+    fun `test verifyApk fails when file does not exist`() = runBlocking {
+        val nonExistent = File(tempFolder.root, "does_not_exist.apk")
+        val result = verifier.verifyApk(nonExistent, "dummy")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun `test verifyApk succeeds with uppercase SHA-256 string`() = runBlocking {
+        val file = tempFolder.newFile("uppercase.apk")
+        val content = "Uppercase SHA content".toByteArray()
+        file.writeBytes(content)
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        val expectedSha = digest.digest(content).joinToString("") { "%02X".format(it) }
+
+        val result = verifier.verifyApk(file, expectedSha, content.size.toLong())
+        assertTrue(result.isSuccess)
+    }
 }
