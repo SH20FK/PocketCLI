@@ -262,6 +262,77 @@ class RuntimeInstallerTest {
         assertFalse(installer.isInstalled())
     }
 
+    @Test
+    fun testFallbackToMirrorWhenPrimaryFails() = runTest(testDispatcher) {
+        val rootfsTarGz = createTarGzArchive(
+            listOf(
+                TarTestEntry(name = "bin/", type = '5'),
+                TarTestEntry(name = "bin/sh", content = "#!/bin/sh\n".toByteArray())
+            )
+        )
+        val opencodeTarGz = createTarGzArchive(
+            listOf(
+                TarTestEntry(name = "package/bin/opencode", content = "#!/bin/sh\necho opencode 1.2.27".toByteArray(), mode = 0b111_101_101)
+            )
+        )
+
+        val rootfsSha = computeSha256(rootfsTarGz)
+        val opencodeSha = computeSha256(opencodeTarGz)
+
+        val manifestJson = """
+        {
+            "manifestVersion": 1,
+            "runtimeVersion": "1.2.27",
+            "alpineVersion": "3.21.3",
+            "artifacts": {
+                "x86_64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/failing-rootfs.tar.gz")}",
+                        "mirrors": ["${mockWebServer.url("/working-rootfs.tar.gz")}"],
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
+                },
+                "aarch64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/failing-rootfs.tar.gz")}",
+                        "mirrors": ["${mockWebServer.url("/working-rootfs.tar.gz")}"],
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
+                }
+            }
+        }
+        """.trimIndent()
+
+        // 1. Primary rootfs fails with 500
+        mockWebServer.enqueue(MockResponse().setResponseCode(500))
+        // 2. Mirror rootfs succeeds with 200
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(rootfsTarGz)))
+        // 3. Opencode succeeds with 200
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(opencodeTarGz)))
+
+        val installer = createInstaller(
+            manifestJson = manifestJson,
+            supportedAbis = arrayOf("x86_64")
+        )
+
+        val result = installer.install()
+        assertTrue("Install should succeed via mirror: ${result.exceptionOrNull()?.message}", result.isSuccess)
+        assertTrue(installer.isInstalled())
+        assertTrue(installer.state.value is InstallState.Ready)
+    }
+
     private fun createInstaller(
         manifestJson: String,
         supportedAbis: Array<String> = arrayOf("x86_64"),

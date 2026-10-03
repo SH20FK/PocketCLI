@@ -20,7 +20,8 @@ data class ArchArtifacts(
 data class ArtifactInfo(
     val url: String,
     val sha256: String,
-    val sizeBytes: Long
+    val sizeBytes: Long,
+    val mirrors: List<String> = emptyList()
 ) {
     fun isValid(): Boolean {
         return url.isNotBlank() &&
@@ -28,4 +29,7 @@ data class ArtifactInfo(
                 sha256.length == 64 &&
                 sha256.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
     }
+
+    val allUrls: List<String>
+        get() = listOf(url) + mirrors
 }

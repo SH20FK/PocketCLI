@@ -22,6 +22,7 @@ import okhttp3.Response
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.security.MessageDigest
@@ -52,13 +53,22 @@ sealed interface InstallState {
 open class RuntimeInstaller(
     private val prootEnvironment: ProotEnvironment,
     private val manifestParser: ManifestParser,
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+    private val okHttpClient: OkHttpClient = defaultOkHttpClient(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val filesDirProvider: () -> File,
     private val supportedAbisProvider: () -> Array<String> = { Build.SUPPORTED_ABIS },
     private val freeSpaceProvider: () -> Long = { filesDirProvider().freeSpace },
     private val manifestContentProvider: () -> String
 ) {
+    companion object {
+        fun defaultOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
     @Inject
     constructor(
         @ApplicationContext context: Context,
@@ -67,7 +77,7 @@ open class RuntimeInstaller(
     ) : this(
         prootEnvironment = prootEnvironment,
         manifestParser = manifestParser,
-        okHttpClient = OkHttpClient.Builder().build(),
+        okHttpClient = defaultOkHttpClient(),
         ioDispatcher = Dispatchers.IO,
         filesDirProvider = { context.filesDir },
         supportedAbisProvider = { Build.SUPPORTED_ABIS },
@@ -269,7 +279,11 @@ open class RuntimeInstaller(
             _state.value = InstallState.Failed("Установка отменена", canRetry = true)
             throw e
         } catch (e: Exception) {
-            val err = e.localizedMessage ?: e.message ?: "Ошибка при установке рантайма"
+            val err = when (e) {
+                is java.net.SocketTimeoutException -> "Превышено время ожидания сети (${e.message ?: "read timed out"}). Проверьте подключение к сети."
+                is java.net.UnknownHostException -> "Не удалось разрешить адрес сервера (${e.message}). Проверьте подключение к сети."
+                else -> e.localizedMessage ?: e.message ?: "Ошибка при установке рантайма"
+            }
             _state.value = InstallState.Failed(err, canRetry = true)
             Result.failure(e)
         } finally {
@@ -318,6 +332,46 @@ open class RuntimeInstaller(
         }
 
         val partFile = File(targetFile.parentFile, "${targetFile.name}.part")
+        val candidateUrls = artifact.allUrls
+        var lastException: Exception? = null
+        var downloadSuccess = false
+
+        for (url in candidateUrls) {
+            try {
+                downloadFromUrl(url, artifact, name, partFile)
+                downloadSuccess = true
+                break
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                lastException = e
+                // If sha256 mismatch or corrupted data, delete partFile so the next mirror starts clean
+                if (e is IllegalStateException) {
+                    partFile.delete()
+                }
+            }
+        }
+
+        if (!downloadSuccess) {
+            throw lastException ?: IOException("Не удалось загрузить $name со всех доступных адресов")
+        }
+
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
+        val renamed = partFile.renameTo(targetFile)
+        if (!renamed) {
+            partFile.copyTo(targetFile, overwrite = true)
+            partFile.delete()
+        }
+    }
+
+    private suspend fun downloadFromUrl(
+        url: String,
+        artifact: ArtifactInfo,
+        name: String,
+        partFile: File
+    ) {
         var existingBytes = if (partFile.exists()) partFile.length() else 0L
 
         if (existingBytes > artifact.sizeBytes) {
@@ -332,7 +386,7 @@ open class RuntimeInstaller(
             currentArtifact = name
         )
 
-        val requestBuilder = Request.Builder().url(artifact.url)
+        val requestBuilder = Request.Builder().url(url)
         if (existingBytes > 0L) {
             requestBuilder.addHeader("Range", "bytes=$existingBytes-")
         }
@@ -342,14 +396,14 @@ open class RuntimeInstaller(
             if (!response.isSuccessful && response.code != 206) {
                 if (response.code == 416) {
                     partFile.delete()
-                    val restartResponse = okHttpClient.newCall(Request.Builder().url(artifact.url).build()).execute()
+                    val restartResponse = okHttpClient.newCall(Request.Builder().url(url).build()).execute()
                     try {
                         writeResponseBody(restartResponse, partFile, false, 0L, artifact, name)
                     } finally {
                         restartResponse.close()
                     }
                 } else {
-                    throw IOException("Ошибка загрузки $name: HTTP ${response.code} ${response.message}")
+                    throw IOException("Ошибка загрузки $name с $url: HTTP ${response.code} ${response.message}")
                 }
             } else {
                 val isResume = response.code == 206
@@ -366,15 +420,6 @@ open class RuntimeInstaller(
         if (!finalHash.equals(artifact.sha256, ignoreCase = true)) {
             partFile.delete()
             throw IllegalStateException("Контрольная сумма SHA-256 для $name не совпадает. Ожидалось: ${artifact.sha256}, получено: $finalHash")
-        }
-
-        if (targetFile.exists()) {
-            targetFile.delete()
-        }
-        val renamed = partFile.renameTo(targetFile)
-        if (!renamed) {
-            partFile.copyTo(targetFile, overwrite = true)
-            partFile.delete()
         }
     }
 
