@@ -8,6 +8,7 @@ import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.local.db.SessionDao
 import com.pocketcli.data.local.db.WorkspaceDao
 import com.pocketcli.data.local.db.WorkspaceEntity
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -18,12 +19,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class WorkspaceRepository @Inject constructor(
+class WorkspaceRepository(
     private val workspaceDao: WorkspaceDao,
     private val sessionDao: SessionDao,
     private val storage: WorkspaceStorage,
-    private val secretStore: SecretStore
+    private val secretStore: SecretStore,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
+    @Inject
+    constructor(
+        workspaceDao: WorkspaceDao,
+        sessionDao: SessionDao,
+        storage: WorkspaceStorage,
+        secretStore: SecretStore
+    ) : this(workspaceDao, sessionDao, storage, secretStore, Dispatchers.IO)
 
     fun getWorkspaces(profileId: String): Flow<List<Workspace>> {
         return workspaceDao.getWorkspaces(profileId).map { list ->
@@ -33,7 +42,7 @@ class WorkspaceRepository @Inject constructor(
 
     fun getWorkspacesWithDetails(profileId: String): Flow<List<WorkspaceWithDetails>> {
         return workspaceDao.getWorkspaces(profileId).map { list ->
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 list.map { entity ->
                     val domain = entity.toDomain()
                     val dir = storage.getWorkspaceDirectory(domain.id)
@@ -59,7 +68,7 @@ class WorkspaceRepository @Inject constructor(
         return workspaceDao.getById(id)?.toDomain()
     }
 
-    suspend fun getWorkspaceWithDetails(id: String): WorkspaceWithDetails? = withContext(Dispatchers.IO) {
+    suspend fun getWorkspaceWithDetails(id: String): WorkspaceWithDetails? = withContext(ioDispatcher) {
         val entity = workspaceDao.getById(id) ?: return@withContext null
         val domain = entity.toDomain()
         val dir = storage.getWorkspaceDirectory(domain.id)
@@ -80,7 +89,7 @@ class WorkspaceRepository @Inject constructor(
         defaultBranch: String = "main",
         token: String? = null,
         initReadme: Boolean = true
-    ): Workspace = withContext(Dispatchers.IO) {
+    ): Workspace = withContext(ioDispatcher) {
         val id = UUID.randomUUID().toString()
         val dir = storage.createWorkspaceDirectory(id, initReadme = initReadme, title = displayName)
 
@@ -120,7 +129,7 @@ class WorkspaceRepository @Inject constructor(
         workspaceDao.setArchived(id, archived)
     }
 
-    suspend fun deleteWorkspace(id: String, deleteFiles: Boolean = true) = withContext(Dispatchers.IO) {
+    suspend fun deleteWorkspace(id: String, deleteFiles: Boolean = true) = withContext(ioDispatcher) {
         workspaceDao.deleteById(id)
         if (deleteFiles) {
             storage.deleteWorkspaceDirectory(id)
@@ -131,7 +140,7 @@ class WorkspaceRepository @Inject constructor(
         return storage.getWorkspaceDirectory(id)
     }
 
-    suspend fun getWorkspaceToken(workspaceId: String): String? = withContext(Dispatchers.IO) {
+    suspend fun getWorkspaceToken(workspaceId: String): String? = withContext(ioDispatcher) {
         val dir = storage.getWorkspaceDirectory(workspaceId)
         val tokenFile = File(dir, ".pocketcli_token")
         if (tokenFile.exists()) {

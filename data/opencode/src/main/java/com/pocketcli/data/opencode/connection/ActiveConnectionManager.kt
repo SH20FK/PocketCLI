@@ -23,11 +23,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ActiveConnectionManager @Inject constructor(
+class ActiveConnectionManager(
     private val profileDao: ProfileDao,
-    private val secretStore: SecretStore
+    private val secretStore: SecretStore,
+    coroutineScope: CoroutineScope? = null
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject
+    constructor(
+        profileDao: ProfileDao,
+        secretStore: SecretStore
+    ) : this(profileDao, secretStore, null)
+
+    private val scope = coroutineScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _activeProfile = MutableStateFlow<ConnectionProfileEntity?>(null)
     val activeProfile: StateFlow<ConnectionProfileEntity?> = _activeProfile.asStateFlow()
 

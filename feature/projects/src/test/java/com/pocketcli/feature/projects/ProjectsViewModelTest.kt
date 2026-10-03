@@ -47,12 +47,14 @@ class ProjectsViewModelTest {
             workspaceDao = workspaceDao,
             sessionDao = sessionDao,
             storage = storage,
-            secretStore = secretStore
+            secretStore = secretStore,
+            ioDispatcher = testDispatcher
         )
 
         connectionManager = ActiveConnectionManager(
             profileDao = profileDao,
-            secretStore = secretStore
+            secretStore = secretStore,
+            coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher)
         )
 
         viewModel = ProjectsViewModel(workspaceRepository, connectionManager)
