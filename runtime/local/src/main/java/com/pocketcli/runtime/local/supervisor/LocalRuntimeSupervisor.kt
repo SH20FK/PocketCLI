@@ -11,6 +11,7 @@ import com.pocketcli.runtime.local.proot.ProotEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
@@ -129,8 +130,9 @@ open class LocalRuntimeSupervisor(
 
     open suspend fun stopServer(): Result<Unit> = withContext(ioDispatcher) {
         shouldAutoRestart = false
-        processMonitorJob?.cancel()
+        val job = processMonitorJob
         processMonitorJob = null
+        job?.cancel()
 
         if (_state.value is LocalRuntimeState.Stopped) {
             return@withContext Result.success(Unit)
@@ -154,6 +156,8 @@ open class LocalRuntimeSupervisor(
                 proc.destroyForcibly()
             }
         }
+
+        job?.join()
 
         _state.value = LocalRuntimeState.Stopped
         logBuffer.append("[Supervisor] Сервер остановлен.")
@@ -219,7 +223,7 @@ open class LocalRuntimeSupervisor(
             currentProcess = process
 
             // Capture streams in background
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
@@ -228,7 +232,7 @@ open class LocalRuntimeSupervisor(
                 }
             }
 
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 BufferedReader(InputStreamReader(process.errorStream)).use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
@@ -286,7 +290,7 @@ open class LocalRuntimeSupervisor(
 
     private fun startProcessMonitor(process: Process) {
         processMonitorJob?.cancel()
-        processMonitorJob = scope.launch(Dispatchers.IO) {
+        processMonitorJob = scope.launch(ioDispatcher) {
             try {
                 val exitCode = process.waitFor()
                 if (isActive && _state.value is LocalRuntimeState.Running) {
@@ -305,6 +309,8 @@ open class LocalRuntimeSupervisor(
                 }
             } catch (_: InterruptedException) {
                 // Normal cancellation
+            } catch (_: CancellationException) {
+                // Normal coroutine cancellation
             }
         }
     }

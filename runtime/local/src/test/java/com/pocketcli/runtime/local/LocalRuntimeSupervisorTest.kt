@@ -225,6 +225,7 @@ class LocalRuntimeSupervisorTest {
 
     private class FakeProcess(private val exitCode: Int = 0) : Process() {
         private var alive = true
+        private val latch = java.util.concurrent.CountDownLatch(1)
         private val stdout = ByteArrayInputStream("opencode server ready\n".toByteArray())
         private val stderr = ByteArrayInputStream("".toByteArray())
         private val sink = ByteArrayOutputStream()
@@ -234,14 +235,24 @@ class LocalRuntimeSupervisorTest {
         override fun getErrorStream(): InputStream = stderr
 
         override fun waitFor(): Int {
-            alive = false
+            latch.await()
             return exitCode
+        }
+
+        override fun waitFor(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean {
+            return latch.await(timeout, unit)
         }
 
         override fun exitValue(): Int = if (alive) throw IllegalThreadStateException() else exitCode
 
         override fun destroy() {
             alive = false
+            latch.countDown()
+        }
+
+        override fun destroyForcibly(): Process {
+            destroy()
+            return this
         }
 
         override fun isAlive(): Boolean = alive
