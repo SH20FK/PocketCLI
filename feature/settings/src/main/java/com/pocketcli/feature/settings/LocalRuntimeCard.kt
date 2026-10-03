@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.ui.theme.PocketShapes
+import com.pocketcli.core.ui.theme.PocketSpacing
 import com.pocketcli.runtime.local.installer.InstallState
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeState
 
@@ -30,7 +32,7 @@ fun LocalRuntimeCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = PocketShapes.container,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -40,7 +42,7 @@ fun LocalRuntimeCard(
         ),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(PocketSpacing.md)) {
             // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -93,7 +95,10 @@ fun LocalRuntimeCard(
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = onInstall,
-                        modifier = Modifier.fillMaxWidth()
+                        shape = PocketShapes.action,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))

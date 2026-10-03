@@ -24,6 +24,8 @@ import com.pocketcli.core.ui.components.DiffSummaryCard
 import com.pocketcli.core.ui.components.FileDiffViewer
 import com.pocketcli.core.ui.components.PocketButtonGroup
 import com.pocketcli.core.ui.components.PocketStatusPill
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -243,11 +245,13 @@ fun FilesTab(
     workspaceDirectory: File,
     modifier: Modifier = Modifier
 ) {
-    val files = remember(workspaceDirectory) {
-        if (workspaceDirectory.exists() && workspaceDirectory.isDirectory) {
-            workspaceDirectory.listFiles()?.sortedWith(compareBy({ !it.isDirectory }, { it.name })) ?: emptyList()
-        } else {
-            emptyList()
+    val files by produceState(initialValue = emptyList<File>(), workspaceDirectory) {
+        value = withContext(Dispatchers.IO) {
+            if (workspaceDirectory.exists() && workspaceDirectory.isDirectory) {
+                workspaceDirectory.listFiles()?.sortedWith(compareBy({ !it.isDirectory }, { it.name })) ?: emptyList()
+            } else {
+                emptyList()
+            }
         }
     }
 

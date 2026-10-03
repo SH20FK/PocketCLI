@@ -265,7 +265,6 @@ class ProjectsViewModel @Inject constructor(
             }
 
             try {
-                delay(300)
                 _uiState.update {
                     it.copy(
                         cloneStage = CloneStage.CONNECTING,
@@ -273,7 +272,6 @@ class ProjectsViewModel @Inject constructor(
                     )
                 }
 
-                delay(400)
                 _uiState.update {
                     it.copy(
                         cloneStage = CloneStage.FETCHING_OBJECTS,
@@ -291,23 +289,6 @@ class ProjectsViewModel @Inject constructor(
                     initReadme = false
                 )
 
-                delay(300)
-                _uiState.update {
-                    it.copy(
-                        cloneStage = CloneStage.UNPACKING,
-                        cloneLog = it.cloneLog + "Распаковка workspace..."
-                    )
-                }
-
-                delay(200)
-                _uiState.update {
-                    it.copy(
-                        cloneStage = CloneStage.VERIFYING_GIT,
-                        cloneLog = it.cloneLog + "Проверка Git окружения..."
-                    )
-                }
-
-                delay(200)
                 _uiState.update {
                     it.copy(
                         cloneStage = CloneStage.READY,
@@ -315,7 +296,6 @@ class ProjectsViewModel @Inject constructor(
                     )
                 }
 
-                delay(300)
                 _uiState.update { it.copy(isCloning = false, showCloneSheet = false) }
                 onCloned(workspace)
             } catch (e: Exception) {

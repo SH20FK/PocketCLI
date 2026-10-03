@@ -124,93 +124,99 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        NavHost(
-                            navController = navController,
-                            startDestination = SessionsRoute,
-                            modifier = Modifier.fillMaxSize()
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
                         ) {
-                            composable<SessionsRoute> {
-                                val viewModel: SessionsViewModel = hiltViewModel()
-                                SessionsScreen(
-                                    viewModel = viewModel,
-                                    onSessionClick = { sessionId, profileId ->
-                                        navController.navigate(ChatRoute(sessionId = sessionId, profileId = profileId))
-                                    }
-                                )
-                            }
-
-                            composable<ProjectsRoute> {
-                                val viewModel: ProjectsViewModel = hiltViewModel()
-                                ProjectsScreen(
-                                    viewModel = viewModel,
-                                    onProjectClick = { workspaceId ->
-                                        navController.navigate(ProjectDetailRoute(workspaceId))
-                                    },
-                                    onStartSessionForProject = { workspaceId ->
-                                        navController.navigate(SessionsRoute) {
-                                            popUpTo(SessionsRoute) { inclusive = true }
+                            NavHost(
+                                navController = navController,
+                                startDestination = SessionsRoute,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                composable<SessionsRoute> {
+                                    val viewModel: SessionsViewModel = hiltViewModel()
+                                    SessionsScreen(
+                                        viewModel = viewModel,
+                                        onSessionClick = { sessionId, profileId ->
+                                            navController.navigate(ChatRoute(sessionId = sessionId, profileId = profileId))
                                         }
-                                    }
-                                )
-                            }
-
-                            composable<ProjectDetailRoute> { backStackEntry ->
-                                val route = backStackEntry.toRoute<ProjectDetailRoute>()
-                                val projectsViewModel: ProjectsViewModel = hiltViewModel()
-                                val uiState by projectsViewModel.uiState.collectAsState()
-                                val item = uiState.workspaces.find { it.workspace.id == route.workspaceId }
-                                    ?: WorkspaceWithDetails(
-                                        workspace = Workspace(
-                                            id = route.workspaceId,
-                                            profileId = uiState.activeProfileId,
-                                            displayName = "Проект",
-                                            localPath = ""
-                                        )
                                     )
-
-                                ProjectDetailScreen(
-                                    workspaceItem = item,
-                                    onNavigateBack = { navController.popBackStack() },
-                                    onStartChat = { wsId ->
-                                        navController.navigate(SessionsRoute) {
-                                            popUpTo(SessionsRoute) { inclusive = true }
-                                        }
-                                    },
-                                    onDeleteProject = { wsId ->
-                                        projectsViewModel.deleteWorkspace(wsId)
-                                    }
-                                )
-                            }
-
-                            composable<ChatRoute> { backStackEntry ->
-                                val route = backStackEntry.toRoute<ChatRoute>()
-                                val viewModel: ChatViewModel = hiltViewModel()
-
-                                LaunchedEffect(route.sessionId, route.profileId) {
-                                    viewModel.initialize(sessionId = route.sessionId, profileId = route.profileId)
                                 }
 
-                                ChatScreen(
-                                    viewModel = viewModel,
-                                    onNavigateBack = { navController.popBackStack() }
-                                )
-                            }
+                                composable<ProjectsRoute> {
+                                    val viewModel: ProjectsViewModel = hiltViewModel()
+                                    ProjectsScreen(
+                                        viewModel = viewModel,
+                                        onProjectClick = { workspaceId ->
+                                            navController.navigate(ProjectDetailRoute(workspaceId))
+                                        },
+                                        onStartSessionForProject = { workspaceId ->
+                                            navController.navigate(SessionsRoute) {
+                                                popUpTo(SessionsRoute) { inclusive = true }
+                                            }
+                                        }
+                                    )
+                                }
 
-                            composable<SettingsRoute> {
-                                val viewModel: SettingsViewModel = hiltViewModel()
-                                SettingsScreen(
-                                    viewModel = viewModel,
-                                    onNavigateToUpdate = { navController.navigate(UpdateRoute) }
-                                )
-                            }
+                                composable<ProjectDetailRoute> { backStackEntry ->
+                                    val route = backStackEntry.toRoute<ProjectDetailRoute>()
+                                    val projectsViewModel: ProjectsViewModel = hiltViewModel()
+                                    val uiState by projectsViewModel.uiState.collectAsState()
+                                    val item = uiState.workspaces.find { it.workspace.id == route.workspaceId }
+                                        ?: WorkspaceWithDetails(
+                                            workspace = Workspace(
+                                                id = route.workspaceId,
+                                                profileId = uiState.activeProfileId,
+                                                displayName = "Проект",
+                                                localPath = ""
+                                            )
+                                        )
 
-                            composable<UpdateRoute> {
-                                val updateViewModel: UpdateViewModel = hiltViewModel()
-                                UpdateScreen(
-                                    viewModel = updateViewModel,
-                                    onNavigateBack = { navController.popBackStack() }
-                                )
+                                    ProjectDetailScreen(
+                                        workspaceItem = item,
+                                        onNavigateBack = { navController.popBackStack() },
+                                        onStartChat = { wsId ->
+                                            navController.navigate(SessionsRoute) {
+                                                popUpTo(SessionsRoute) { inclusive = true }
+                                            }
+                                        },
+                                        onDeleteProject = { wsId ->
+                                            projectsViewModel.deleteWorkspace(wsId)
+                                        }
+                                    )
+                                }
+
+                                composable<ChatRoute> { backStackEntry ->
+                                    val route = backStackEntry.toRoute<ChatRoute>()
+                                    val viewModel: ChatViewModel = hiltViewModel()
+
+                                    LaunchedEffect(route.sessionId, route.profileId) {
+                                        viewModel.initialize(sessionId = route.sessionId, profileId = route.profileId)
+                                    }
+
+                                    ChatScreen(
+                                        viewModel = viewModel,
+                                        onNavigateBack = { navController.popBackStack() }
+                                    )
+                                }
+
+                                composable<SettingsRoute> {
+                                    val viewModel: SettingsViewModel = hiltViewModel()
+                                    SettingsScreen(
+                                        viewModel = viewModel,
+                                        onNavigateToUpdate = { navController.navigate(UpdateRoute) }
+                                    )
+                                }
+
+                                composable<UpdateRoute> {
+                                    val updateViewModel: UpdateViewModel = hiltViewModel()
+                                    UpdateScreen(
+                                        viewModel = updateViewModel,
+                                        onNavigateBack = { navController.popBackStack() }
+                                    )
+                                }
                             }
                         }
 
@@ -225,10 +231,7 @@ class MainActivity : ComponentActivity() {
                                         connectionManager.getAdapter()?.cancel(sessionId)
                                         sessionRepository.flushInFlightToDb(sessionId)
                                     }
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .navigationBarsPadding()
+                                }
                             )
                         }
                     }

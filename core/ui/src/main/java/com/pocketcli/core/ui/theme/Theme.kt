@@ -81,10 +81,17 @@ fun PocketCLITheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = PocketTypography,
-        shapes = PocketShapes,
-        content = content
-    )
+    val codeScheme = if (darkTheme) DarkCodeScheme else LightCodeScheme
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalPocketMotionScheme provides PocketMotionScheme(),
+        LocalPocketCodeScheme provides codeScheme
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = PocketTypography,
+            shapes = MaterialShapes,
+            content = content
+        )
+    }
 }

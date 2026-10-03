@@ -22,6 +22,8 @@ import com.pocketcli.core.ui.components.PocketAppBarWithSearch
 import com.pocketcli.core.ui.components.PocketDialog
 import com.pocketcli.core.ui.components.PocketStatusPill
 import com.pocketcli.core.ui.components.ProjectPickerSheet
+import com.pocketcli.core.ui.theme.PocketShapes
+import com.pocketcli.core.ui.theme.PocketSpacing
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -333,17 +335,17 @@ fun SessionItemCard(
     val formattedDate = remember(session.updatedAt) { dateFormat.format(Date(session.updatedAt)) }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = PocketShapes.container,
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PocketShapes.container)
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(PocketSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

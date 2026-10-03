@@ -1,4 +1,4 @@
-package com.pocketcli.feature.chat
+﻿package com.pocketcli.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,29 +6,11 @@ import com.pocketcli.core.model.*
 import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.data.opencode.repository.AgentSessionRepository
+import com.pocketcli.feature.chat.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class ChatUiState(
-    val sessionId: String = "",
-    val profileId: String = "",
-    val sessionTitle: String = "Чат сессии",
-    val workspaceName: String = "Локально",
-    val messages: List<Message> = emptyList(),
-    val sessionState: SessionState = SessionState.IDLE,
-    val pendingPermission: AgentEvent.PermissionRequested? = null,
-    val showPermissionDetails: Boolean = false,
-    val selectedToolForDetails: ToolCall? = null,
-    val activeDiffFile: Pair<String, String>? = null,
-    val composerDraft: String = "",
-    val attachments: List<String> = emptyList(),
-    val availableModels: List<ModelInfo> = emptyList(),
-    val selectedModel: ModelInfo? = null,
-    val isModelPickerOpen: Boolean = false,
-    val errorMessage: String? = null
-)
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
@@ -50,188 +32,315 @@ class ChatViewModel @Inject constructor(
                 ?: connectionManager.activeProfile.value?.id
                 ?: repository.getProfileIdForSession(sessionId)
                 ?: connectionManager.getActiveProfileId()
-                ?: ""
+                ?: "
 
-            val session = repository.getSession(resolvedProfileId, sessionId)
-            val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
+ val session = repository.getSession(resolvedProfileId, sessionId)
+ val title = session?.title?.ifBlank { Чат сессии } ?: Чат сессии
 
-            _uiState.update {
-                it.copy(
-                    sessionId = sessionId,
-                    profileId = resolvedProfileId,
-                    sessionTitle = title
-                )
-            }
+ _uiState.update { current ->
+ val nextState = current.copy(
+ sessionId = sessionId,
+ profileId = resolvedProfileId,
+ sessionTitle = title
+ )
+ syncNodesAndComposer(nextState)
+ }
 
-            // 1. Observe hybrid message stream (Room + in-flight StateFlow)
-            launch {
-                repository.getMessages(resolvedProfileId, sessionId).collect { messages ->
-                    _uiState.update { it.copy(messages = messages) }
-                }
-            }
+ // 1. Observe hybrid message stream (Room + in-flight StateFlow)
+ launch {
+ repository.getMessages(resolvedProfileId, sessionId).collect { messages ->
+ _uiState.update { current ->
+ val nextState = current.copy(messages = messages)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ }
 
-            // 2. Load available models from the server
-            launch {
-                effectiveAdapter?.getModels()?.onSuccess { models ->
-                    _uiState.update { it.copy(availableModels = models) }
-                }
-            }
+ // 2. Load available models from the server
+ launch {
+ effectiveAdapter?.getModels()?.onSuccess { models ->
+ _uiState.update { current ->
+ val nextState = current.copy(availableModels = models)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ }
 
-            // 3. Reconcile existing server messages if available
-            val apiClient = effectiveAdapter?.apiClient
-            if (apiClient != null && resolvedProfileId.isNotEmpty()) {
-                launch {
-                    repository.reconcile(apiClient, resolvedProfileId, sessionId)
-                }
-            }
+ // 3. Reconcile existing server messages if available
+ val apiClient = effectiveAdapter?.apiClient
+ if (apiClient != null && resolvedProfileId.isNotEmpty()) {
+ launch {
+ repository.reconcile(apiClient, resolvedProfileId, sessionId)
+ }
+ }
 
-            // 4. Observe SSE events for this session
-            if (effectiveAdapter != null) {
-                launch {
-                    effectiveAdapter.events(sessionId).collect { event ->
-                        repository.handleAgentEvent(resolvedProfileId, sessionId, event)
+ // 4. Observe SSE events for this session
+ if (effectiveAdapter != null) {
+ launch {
+ effectiveAdapter.events(sessionId).collect { event ->
+ repository.handleAgentEvent(resolvedProfileId, sessionId, event)
 
-                        when (event) {
-                            is AgentEvent.SessionStatus -> {
-                                _uiState.update { it.copy(sessionState = event.state) }
-                            }
-                            is AgentEvent.PermissionRequested -> {
-                                _uiState.update { it.copy(pendingPermission = event) }
-                            }
-                            is AgentEvent.FileDiff -> {
-                                _uiState.update { it.copy(activeDiffFile = Pair(event.path, event.unifiedDiff)) }
-                            }
-                            else -> Unit
-                        }
-                    }
-                }
-            }
-        }
-    }
+ when (event) {
+ is AgentEvent.SessionStatus -> {
+ _uiState.update { current ->
+ val nextState = current.copy(sessionState = event.state)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.PermissionRequested -> {
+ _uiState.update { current ->
+ val nextState = current.copy(pendingPermission = event)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.FileDiff -> {
+ _uiState.update { current ->
+ val nextState = current.copy(activeDiffFile = Pair(event.path, event.unifiedDiff))
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.TextDelta -> {
+ _uiState.update { current ->
+ val tail = StreamingTailUi(
+ messageId = event.messageId,
+ visibleText = event.text,
+ phase = AgentPhase.STREAMING_TEXT
+ )
+ val nextState = current.copy(streamingTail = tail)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.ReasoningDelta -> {
+ _uiState.update { current ->
+ val tail = StreamingTailUi(
+ messageId = event.messageId,
+ visibleText = event.text,
+ phase = AgentPhase.THINKING
+ )
+ val nextState = current.copy(streamingTail = tail)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.ToolCallUpdate -> {
+ _uiState.update { current ->
+ val tail = StreamingTailUi(
+ messageId = event.messageId,
+ visibleText = ,
+ phase = AgentPhase.EXECUTING_TOOL,
+ currentTool = ToolSummary(
+ callId = event.callId,
+ name = event.name,
+ status = event.status
+ )
+ )
+ val nextState = current.copy(streamingTail = tail)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ else -> Unit
+ }
+ }
+ }
+ }
+ }
+ }
 
-    fun onDraftChange(text: String) {
-        _uiState.update { it.copy(composerDraft = text) }
-    }
+ fun onDraftChange(text: String) {
+ _uiState.update { current ->
+ val nextState = current.copy(composerDraft = text)
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun addAttachment(name: String) {
-        _uiState.update { it.copy(attachments = it.attachments + name) }
-    }
+ fun addAttachment(name: String) {
+ _uiState.update { current ->
+ val nextState = current.copy(attachments = current.attachments + name)
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun removeAttachment(index: Int) {
-        _uiState.update {
-            val list = it.attachments.toMutableList()
-            if (index in list.indices) {
-                list.removeAt(index)
-            }
-            it.copy(attachments = list)
-        }
-    }
+ fun removeAttachment(index: Int) {
+ _uiState.update { current ->
+ val list = current.attachments.toMutableList()
+ if (index in list.indices) {
+ list.removeAt(index)
+ }
+ val nextState = current.copy(attachments = list)
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun openModelPicker() {
-        _uiState.update { it.copy(isModelPickerOpen = true) }
-    }
+ fun openModelPicker() {
+ _uiState.update { it.copy(isModelPickerOpen = true) }
+ }
 
-    fun dismissModelPicker() {
-        _uiState.update { it.copy(isModelPickerOpen = false) }
-    }
+ fun dismissModelPicker() {
+ _uiState.update { it.copy(isModelPickerOpen = false) }
+ }
 
-    fun selectModel(model: ModelInfo?) {
-        _uiState.update { it.copy(selectedModel = model, isModelPickerOpen = false) }
-    }
+ fun selectModel(model: ModelInfo?) {
+ _uiState.update { current ->
+ val nextState = current.copy(selectedModel = model, isModelPickerOpen = false)
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun openPermissionDetails() {
-        _uiState.update { it.copy(showPermissionDetails = true) }
-    }
+ fun openPermissionDetails() {
+ _uiState.update { it.copy(showPermissionDetails = true) }
+ }
 
-    fun dismissPermissionDetails() {
-        _uiState.update { it.copy(showPermissionDetails = false) }
-    }
+ fun dismissPermissionDetails() {
+ _uiState.update { it.copy(showPermissionDetails = false) }
+ }
 
-    fun openDiff(path: String, diff: String) {
-        _uiState.update { it.copy(activeDiffFile = Pair(path, diff)) }
-    }
+ fun openDiff(path: String, diff: String) {
+ _uiState.update { current ->
+ val nextState = current.copy(activeDiffFile = Pair(path, diff))
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun closeDiff() {
-        _uiState.update { it.copy(activeDiffFile = null) }
-    }
+ fun closeDiff() {
+ _uiState.update { current ->
+ val nextState = current.copy(activeDiffFile = null)
+ syncNodesAndComposer(nextState)
+ }
+ }
 
-    fun sendPrompt() {
-        val state = _uiState.value
-        val text = state.composerDraft.trim()
-        if (text.isBlank() || state.sessionState == SessionState.BUSY) return
+ fun sendPrompt() {
+ val state = _uiState.value
+ val text = state.composerDraft.trim()
+ if (text.isBlank() || state.sessionState == SessionState.BUSY) return
 
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    composerDraft = "",
-                    attachments = emptyList(),
-                    sessionState = SessionState.BUSY,
-                    errorMessage = null
-                )
-            }
-            // 1. Record user message in DB
-            repository.recordUserMessage(state.profileId, state.sessionId, text)
+ viewModelScope.launch {
+ _uiState.update { current ->
+ val nextState = current.copy(
+ composerDraft = ,
+ attachments = emptyList(),
+ sessionState = SessionState.BUSY,
+ errorMessage = null
+ )
+ syncNodesAndComposer(nextState)
+ }
 
-            // 2. Dispatch to agent adapter
-            val adapter = activeAdapter ?: connectionManager.getAdapter()
-            if (adapter == null) {
-                _uiState.update {
-                    it.copy(
-                        sessionState = SessionState.IDLE,
-                        errorMessage = "Нет активного подключения. Проверьте настройки."
-                    )
-                }
-                return@launch
-            }
+ // 1. Record user message in DB
+ repository.recordUserMessage(state.profileId, state.sessionId, text)
 
-            val modelInput = state.selectedModel?.let { ModelIdentifier(it.providerId, it.modelId) }
-            val result = adapter.sendPrompt(state.sessionId, Prompt(text = text, model = modelInput))
-            result.onFailure { err ->
-                _uiState.update {
-                    it.copy(
-                        sessionState = SessionState.IDLE,
-                        errorMessage = "Не удалось отправить сообщение: ${err.message}"
-                    )
-                }
-                return@launch
-            }
+ // 2. Dispatch to agent adapter
+ val adapter = activeAdapter ?: connectionManager.getAdapter()
+ if (adapter == null) {
+ _uiState.update { current ->
+ val nextState = current.copy(
+ sessionState = SessionState.IDLE,
+ errorMessage = Нет активного подключения. Проверьте настройки.
+ )
+ syncNodesAndComposer(nextState)
+ }
+ return@launch
+ }
 
-            // 3. Reconcile with server to guarantee response is stored even if SSE dropped
-            val apiClient = adapter.apiClient
-            if (state.profileId.isNotEmpty()) {
-                repository.reconcile(apiClient, state.profileId, state.sessionId)
-            }
-            _uiState.update { it.copy(sessionState = SessionState.IDLE) }
-        }
-    }
+ val modelInput = state.selectedModel?.let { ModelIdentifier(it.providerId, it.modelId) }
+ val result = adapter.sendPrompt(state.sessionId, Prompt(text = text, model = modelInput))
+ result.onFailure { err ->
+ _uiState.update { current ->
+ val nextState = current.copy(
+ sessionState = SessionState.IDLE,
+ errorMessage = Не удалось отправить сообщение: 
+ )
+ syncNodesAndComposer(nextState)
+ }
+ return@launch
+ }
 
-    fun dismissError() {
-        _uiState.update { it.copy(errorMessage = null) }
-    }
+ // 3. Reconcile with server to guarantee response is stored even if SSE dropped
+ val apiClient = adapter.apiClient
+ if (state.profileId.isNotEmpty()) {
+ repository.reconcile(apiClient, state.profileId, state.sessionId)
+ }
+ _uiState.update { current ->
+ val nextState = current.copy(sessionState = SessionState.IDLE)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ }
 
-    fun stop() {
-        val state = _uiState.value
-        viewModelScope.launch {
-            val adapter = activeAdapter ?: connectionManager.getAdapter()
-            adapter?.cancel(state.sessionId)
-            _uiState.update { it.copy(sessionState = SessionState.IDLE) }
-            repository.flushInFlightToDb(state.sessionId)
-        }
-    }
+ fun dismissError() {
+ _uiState.update { it.copy(errorMessage = null) }
+ }
 
-    fun respondPermission(requestId: String, option: PermissionOption) {
-        viewModelScope.launch {
-            val adapter = activeAdapter ?: connectionManager.getAdapter()
-            adapter?.respondPermission(requestId, option)
-            _uiState.update { it.copy(pendingPermission = null, showPermissionDetails = false) }
-        }
-    }
+ fun stop() {
+ val state = _uiState.value
+ viewModelScope.launch {
+ val adapter = activeAdapter ?: connectionManager.getAdapter()
+ adapter?.cancel(state.sessionId)
+ _uiState.update { current ->
+ val nextState = current.copy(sessionState = SessionState.IDLE)
+ syncNodesAndComposer(nextState)
+ }
+ repository.flushInFlightToDb(state.sessionId)
+ }
+ }
 
-    fun openToolDetails(toolCall: ToolCall) {
-        _uiState.update { it.copy(selectedToolForDetails = toolCall) }
-    }
+ fun respondPermission(requestId: String, option: PermissionOption) {
+ viewModelScope.launch {
+ val adapter = activeAdapter ?: connectionManager.getAdapter()
+ adapter?.respondPermission(requestId, option)
+ _uiState.update { current ->
+ val nextState = current.copy(pendingPermission = null, showPermissionDetails = false)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ }
 
-    fun dismissToolDetails() {
-        _uiState.update { it.copy(selectedToolForDetails = null) }
-    }
+ fun openToolDetails(toolCall: ToolCall) {
+ _uiState.update { it.copy(selectedToolForDetails = toolCall) }
+ }
+
+ fun dismissToolDetails() {
+ _uiState.update { it.copy(selectedToolForDetails = null) }
+ }
+
+ private fun syncNodesAndComposer(state: ChatUiState): ChatUiState {
+ val nodes = mutableListOf<ChatNode>()
+ for (msg in state.messages) {
+ if (msg.role == MessageRole.USER) {
+ nodes.add(ChatNode.UserNode(id = msg.id, text = msg.text, timestamp = msg.timestamp))
+ } else {
+ nodes.add(ChatNode.AssistantNode(id = msg.id, message = msg, isStreaming = false))
+ for (tool in msg.toolCalls) {
+ nodes.add(ChatNode.ToolNode(id = tool.callId, toolCall = tool))
+ }
+ }
+ }
+
+ state.activeDiffFile?.let { (path, diff) ->
+ nodes.add(ChatNode.DiffNode(id = diff_, filePath = path, diffContent = diff))
+ }
+
+ state.pendingPermission?.let { perm ->
+ nodes.add(ChatNode.PermissionNode(id = perm_, request = perm))
+ }
+
+ if (state.streamingTail != null && state.sessionState == SessionState.BUSY) {
+ nodes.add(ChatNode.StreamingTailNode(id = tail_, tail = state.streamingTail))
+ }
+
+ val mode = when {
+ state.sessionState == SessionState.BUSY -> ComposerMode.Running
+ state.pendingPermission != null -> ComposerMode.AwaitingPermission
+ state.attachments.isNotEmpty() -> ComposerMode.WithAttachments
+ state.composerDraft.isNotBlank() -> ComposerMode.Typing
+ else -> ComposerMode.Empty
+ }
+
+ val composer = ComposerState(
+ text = state.composerDraft,
+ attachments = state.attachments,
+ mode = mode,
+ selectedModelName = state.selectedModel?.name,
+ isSendEnabled = state.composerDraft.isNotBlank() || state.attachments.isNotEmpty()
+ )
+
+ return state.copy(nodes = nodes, composer = composer)
+ }
 }

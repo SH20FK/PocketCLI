@@ -19,6 +19,8 @@ import com.pocketcli.core.ui.components.AgentActivityState
 import com.pocketcli.core.ui.components.PocketDialog
 import com.pocketcli.core.ui.components.PocketStatusPill
 import com.pocketcli.core.ui.components.PocketTwoRowsTopAppBar
+import com.pocketcli.core.ui.theme.PocketShapes
+import com.pocketcli.core.ui.theme.PocketSpacing
 import com.pocketcli.data.local.db.ConnectionProfileEntity
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeSupervisor
 
@@ -91,17 +93,17 @@ fun SettingsScreen(
             // Section 2: OTA App Updates
             item {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = PocketShapes.container,
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(PocketShapes.container)
                         .clickable { onNavigateToUpdate() }
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(PocketSpacing.md)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(

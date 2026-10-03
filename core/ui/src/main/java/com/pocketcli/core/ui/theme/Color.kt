@@ -95,3 +95,45 @@ val DiffAddedBackgroundDark = Color(0xFF1A3826)
 val DiffRemovedBackgroundDark = Color(0xFF3D1B1B)
 val DiffAddedBackgroundLight = Color(0xFFE6F4EA)
 val DiffRemovedBackgroundLight = Color(0xFFFCE8E6)
+
+@androidx.compose.runtime.Immutable
+data class PocketCodeScheme(
+    val background: Color,
+    val onBackground: Color,
+    val addedBackground: Color,
+    val addedText: Color,
+    val removedBackground: Color,
+    val removedText: Color,
+    val lineNumber: Color,
+    val keyword: Color,
+    val string: Color,
+    val comment: Color
+)
+
+val DarkCodeScheme = PocketCodeScheme(
+    background = Color(0xFF1E1E1E),
+    onBackground = Color(0xFFD4D4D4),
+    addedBackground = Color(0xFF1A3826),
+    addedText = Color(0xFF81C784),
+    removedBackground = Color(0xFF3D1B1B),
+    removedText = Color(0xFFE57373),
+    lineNumber = Color(0xFF858585),
+    keyword = Color(0xFF569CD6),
+    string = Color(0xFFCE9178),
+    comment = Color(0xFF6A9955)
+)
+
+val LightCodeScheme = PocketCodeScheme(
+    background = Color(0xFFF5F5F5),
+    onBackground = Color(0xFF24292E),
+    addedBackground = Color(0xFFE6F4EA),
+    addedText = Color(0xFF1B5E20),
+    removedBackground = Color(0xFFFCE8E6),
+    removedText = Color(0xFFB71C1C),
+    lineNumber = Color(0xFF6E7781),
+    keyword = Color(0xFFD73A49),
+    string = Color(0xFF032F62),
+    comment = Color(0xFF6A737D)
+)
+
+val LocalPocketCodeScheme = androidx.compose.runtime.staticCompositionLocalOf { DarkCodeScheme }
