@@ -14,7 +14,7 @@ interface AgentAdapter {
     val capabilities: Set<Capability>
     suspend fun connect(): Result<Unit>
     fun events(sessionId: String): Flow<AgentEvent>
-    suspend fun createSession(title: String): Result<Session>
+    suspend fun createSession(title: String, directory: String? = null): Result<Session>
     suspend fun listSessions(): Result<List<Session>>
     suspend fun sendPrompt(sessionId: String, prompt: Prompt): Result<Unit>
     suspend fun getModels(): Result<List<ModelInfo>> = Result.success(emptyList())

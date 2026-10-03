@@ -177,8 +177,8 @@ class OpenCodeAdapter(
         }
     }
 
-    override suspend fun createSession(title: String): Result<Session> {
-        return apiClient.createSession(title).map { dto ->
+    override suspend fun createSession(title: String, directory: String?): Result<Session> {
+        return apiClient.createSession(title, directory).map { dto ->
             Session(
                 id = dto.id,
                 profileId = profileId,

@@ -3,7 +3,8 @@ package com.pocketcli.feature.sessions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pocketcli.core.model.Session
-import com.pocketcli.data.opencode.adapter.OpenCodeAdapter
+import com.pocketcli.core.model.Workspace
+import com.pocketcli.data.local.repository.WorkspaceRepository
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.data.opencode.repository.AgentSessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +16,8 @@ data class SessionsUiState(
     val activeProfileId: String = "",
     val activeProfileName: String = "",
     val sessions: List<Session> = emptyList(),
+    val workspaces: List<Workspace> = emptyList(),
+    val selectedWorkspaceId: String? = null,
     val isCreatingSession: Boolean = false,
     val showCreateDialog: Boolean = false,
     val newSessionTitle: String = "",
@@ -24,7 +27,8 @@ data class SessionsUiState(
 @HiltViewModel
 class SessionsViewModel @Inject constructor(
     private val repository: AgentSessionRepository,
-    private val connectionManager: ActiveConnectionManager
+    private val connectionManager: ActiveConnectionManager,
+    private val workspaceRepository: WorkspaceRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SessionsUiState())
@@ -46,9 +50,20 @@ class SessionsViewModel @Inject constructor(
                             _uiState.update { it.copy(sessions = list) }
                         }
                     }
+                    launch {
+                        workspaceRepository.getWorkspaces(profile.id).collect { list ->
+                            _uiState.update { it.copy(workspaces = list) }
+                        }
+                    }
                     syncSessions(profile.id)
                 } else {
-                    _uiState.update { it.copy(sessions = emptyList()) }
+                    _uiState.update {
+                        it.copy(
+                            sessions = emptyList(),
+                            workspaces = emptyList(),
+                            selectedWorkspaceId = null
+                        )
+                    }
                 }
             }
         }
@@ -65,8 +80,15 @@ class SessionsViewModel @Inject constructor(
         }
     }
 
-    fun openCreateDialog() {
-        _uiState.update { it.copy(showCreateDialog = true, newSessionTitle = "", errorMessage = null) }
+    fun openCreateDialog(preselectedWorkspaceId: String? = null) {
+        _uiState.update {
+            it.copy(
+                showCreateDialog = true,
+                newSessionTitle = "",
+                selectedWorkspaceId = preselectedWorkspaceId ?: it.selectedWorkspaceId,
+                errorMessage = null
+            )
+        }
     }
 
     fun dismissCreateDialog() {
@@ -77,8 +99,15 @@ class SessionsViewModel @Inject constructor(
         _uiState.update { it.copy(newSessionTitle = title, errorMessage = null) }
     }
 
+    fun selectWorkspace(workspaceId: String?) {
+        _uiState.update { it.copy(selectedWorkspaceId = workspaceId) }
+    }
+
     fun createSession(onCreated: (String) -> Unit) {
         val title = _uiState.value.newSessionTitle.ifBlank { "New Session" }
+        val selectedWsId = _uiState.value.selectedWorkspaceId
+        val selectedWorkspace = _uiState.value.workspaces.find { it.id == selectedWsId }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingSession = true, errorMessage = null) }
             val adapter = connectionManager.getAdapter()
@@ -92,11 +121,21 @@ class SessionsViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = adapter.createSession(title)
+            val result = adapter.createSession(title, directory = selectedWorkspace?.localPath)
             result.fold(
                 onSuccess = { session ->
-                    repository.saveSession(session)
-                    _uiState.update { it.copy(isCreatingSession = false, showCreateDialog = false, newSessionTitle = "") }
+                    val sessionWithWorkspace = session.copy(workspaceId = selectedWsId)
+                    repository.saveSession(sessionWithWorkspace)
+                    selectedWsId?.let { wsId ->
+                        workspaceRepository.touchWorkspace(wsId)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isCreatingSession = false,
+                            showCreateDialog = false,
+                            newSessionTitle = ""
+                        )
+                    }
                     onCreated(session.id)
                 },
                 onFailure = { error ->

@@ -47,6 +47,9 @@ interface WorkspaceDao {
     @Query("SELECT * FROM workspaces WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): WorkspaceEntity?
 
+    @Query("UPDATE workspaces SET archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: String, archived: Boolean)
+
     @Query("UPDATE workspaces SET lastOpenedAt = :timestamp WHERE id = :id")
     suspend fun updateLastOpened(id: String, timestamp: Long = System.currentTimeMillis())
 
@@ -73,6 +76,12 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions WHERE workspaceId = :workspaceId ORDER BY updatedAt DESC")
     fun getSessionsForWorkspace(workspaceId: String): Flow<List<SessionEntity>>
+
+    @Query("SELECT COUNT(*) FROM sessions WHERE workspaceId = :workspaceId")
+    fun countSessionsForWorkspaceFlow(workspaceId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM sessions WHERE workspaceId = :workspaceId")
+    suspend fun countSessionsForWorkspace(workspaceId: String): Int
 
     @Query("DELETE FROM sessions WHERE profileId = :profileId AND sessionId = :sessionId")
     suspend fun delete(profileId: String, sessionId: String)

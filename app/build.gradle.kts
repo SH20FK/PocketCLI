@@ -63,6 +63,7 @@ dependencies {
     implementation(project(":feature:sessions"))
     implementation(project(":feature:chat"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:projects"))
 
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)

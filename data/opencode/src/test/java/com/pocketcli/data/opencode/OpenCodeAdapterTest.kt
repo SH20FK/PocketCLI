@@ -93,6 +93,18 @@ class OpenCodeAdapterTest {
     }
 
     @Test
+    fun testCreateSessionWithDirectory() = runBlocking {
+        val sessionJson = """{"id": "ses_test_dir", "title": "Dir Session", "time": {"created": 100, "updated": 100}}"""
+        mockWebServer.enqueue(MockResponse().setBody(sessionJson).setResponseCode(200))
+
+        val result = adapter.createSession("Dir Session", "/workspace/my_project")
+        assertTrue(result.isSuccess)
+
+        val recorded = mockWebServer.takeRequest()
+        assertTrue(recorded.path?.contains("directory=%2Fworkspace%2Fmy_project") == true)
+    }
+
+    @Test
     fun testSseFullTurnFlow() = runBlocking {
         val sseStream = """
             data: {"payload":{"type":"server.connected","properties":{}}}

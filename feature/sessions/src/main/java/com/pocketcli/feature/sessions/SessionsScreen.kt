@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,9 @@ fun SessionsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val workspaceMap = remember(uiState.workspaces) {
+        uiState.workspaces.associateBy({ it.id }, { it.displayName })
+    }
 
     Scaffold(
         topBar = {
@@ -83,8 +87,10 @@ fun SessionsScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(uiState.sessions, key = { it.id }) { session ->
+                        val wsName = session.workspaceId?.let { workspaceMap[it] }
                         SessionItemCard(
                             session = session,
+                            workspaceName = wsName,
                             onClick = { onSessionClick(session.id, session.profileId) },
                             onDelete = { viewModel.deleteSession(session.id) }
                         )
@@ -95,11 +101,14 @@ fun SessionsScreen(
         }
 
         if (uiState.showCreateDialog) {
+            var expandedDropdown by remember { mutableStateOf(false) }
+            val selectedWs = uiState.workspaces.find { it.id == uiState.selectedWorkspaceId }
+
             AlertDialog(
                 onDismissRequest = { viewModel.dismissCreateDialog() },
                 title = { Text("New Session") },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
                             value = uiState.newSessionTitle,
                             onValueChange = { viewModel.onNewSessionTitleChange(it) },
@@ -107,6 +116,49 @@ fun SessionsScreen(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (uiState.workspaces.isNotEmpty()) {
+                            ExposedDropdownMenuBox(
+                                expanded = expandedDropdown,
+                                onExpandedChange = { expandedDropdown = !expandedDropdown }
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedWs?.displayName ?: "None (Global)",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Project / Workspace") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDropdown) },
+                                    modifier = Modifier
+                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                        .fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expandedDropdown,
+                                    onDismissRequest = { expandedDropdown = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("None (Global)") },
+                                        onClick = {
+                                            viewModel.selectWorkspace(null)
+                                            expandedDropdown = false
+                                        }
+                                    )
+                                    for (ws in uiState.workspaces) {
+                                        DropdownMenuItem(
+                                            text = { Text(ws.displayName) },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            },
+                                            onClick = {
+                                                viewModel.selectWorkspace(ws.id)
+                                                expandedDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         uiState.errorMessage?.let { error ->
                             Text(
                                 text = error,
@@ -137,6 +189,7 @@ fun SessionsScreen(
 @Composable
 fun SessionItemCard(
     session: Session,
+    workspaceName: String? = null,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -176,11 +229,40 @@ fun SessionItemCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Updated: $formattedTime",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Updated: $formattedTime",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (!workspaceName.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = workspaceName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

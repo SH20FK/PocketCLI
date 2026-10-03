@@ -56,6 +56,20 @@ data class Workspace(
 )
 
 @Serializable
+data class WorkspaceGitStatus(
+    val branch: String? = null,
+    val isGitRepo: Boolean = false,
+    val isDirty: Boolean = false,
+    val fileCount: Int = 0
+)
+
+data class WorkspaceWithDetails(
+    val workspace: Workspace,
+    val gitStatus: WorkspaceGitStatus = WorkspaceGitStatus(),
+    val sessionCount: Int = 0
+)
+
+@Serializable
 data class ModelIdentifier(
     val providerId: String,
     val modelId: String

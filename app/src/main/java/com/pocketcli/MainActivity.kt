@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.*
@@ -19,6 +20,8 @@ import com.pocketcli.core.ui.theme.PocketCLITheme
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.feature.chat.ChatScreen
 import com.pocketcli.feature.chat.ChatViewModel
+import com.pocketcli.feature.projects.ProjectsScreen
+import com.pocketcli.feature.projects.ProjectsViewModel
 import com.pocketcli.feature.sessions.SessionsScreen
 import com.pocketcli.feature.sessions.SessionsViewModel
 import com.pocketcli.feature.settings.SettingsScreen
@@ -29,6 +32,7 @@ import javax.inject.Inject
 
 @Serializable object SessionsRoute
 @Serializable data class ChatRoute(val sessionId: String, val profileId: String = "")
+@Serializable object ProjectsRoute
 @Serializable object SettingsRoute
 
 @AndroidEntryPoint
@@ -60,11 +64,22 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         item(
-                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                            label = { Text("Settings") },
+                            icon = { Icon(Icons.Default.Folder, contentDescription = "Projects") },
+                            label = { Text("Projects") },
                             selected = selectedTab == 1,
                             onClick = {
                                 selectedTab = 1
+                                navController.navigate(ProjectsRoute) {
+                                    popUpTo(SessionsRoute)
+                                }
+                            }
+                        )
+                        item(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                            label = { Text("Settings") },
+                            selected = selectedTab == 2,
+                            onClick = {
+                                selectedTab = 2
                                 navController.navigate(SettingsRoute) {
                                     popUpTo(SessionsRoute)
                                 }
@@ -83,6 +98,25 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 onSessionClick = { sessionId, profileId ->
                                     navController.navigate(ChatRoute(sessionId = sessionId, profileId = profileId))
+                                }
+                            )
+                        }
+
+                        composable<ProjectsRoute> {
+                            val viewModel: ProjectsViewModel = hiltViewModel()
+                            ProjectsScreen(
+                                viewModel = viewModel,
+                                onProjectClick = { workspaceId ->
+                                    selectedTab = 0
+                                    navController.navigate(SessionsRoute) {
+                                        popUpTo(SessionsRoute) { inclusive = true }
+                                    }
+                                },
+                                onStartSessionForProject = { workspaceId ->
+                                    selectedTab = 0
+                                    navController.navigate(SessionsRoute) {
+                                        popUpTo(SessionsRoute) { inclusive = true }
+                                    }
                                 }
                             )
                         }

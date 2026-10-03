@@ -53,12 +53,18 @@ class OpenCodeApiClient(
         }
     }
 
-    suspend fun createSession(title: String): Result<OpenCodeSessionDto> = withContext(Dispatchers.IO) {
+    suspend fun createSession(title: String, directory: String? = null): Result<OpenCodeSessionDto> = withContext(Dispatchers.IO) {
         runCatching {
             val body = json.encodeToString(OpenCodeCreateSessionRequest(title = title))
                 .toRequestBody(jsonMediaType)
+            val baseHttpUrl = buildUrl("/session")
+            val targetUrl = if (!directory.isNullOrBlank()) {
+                baseHttpUrl.newBuilder().addQueryParameter("directory", directory).build()
+            } else {
+                baseHttpUrl
+            }
             val request = Request.Builder()
-                .url(buildUrl("/session"))
+                .url(targetUrl)
                 .post(body)
                 .build()
 
