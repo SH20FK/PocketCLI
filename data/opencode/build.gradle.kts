@@ -30,7 +30,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:security"))
-    implementation(project(":data:local"))
+    api(project(":data:local"))
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
@@ -38,10 +38,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
 
     implementation(libs.datastore.preferences)
 
