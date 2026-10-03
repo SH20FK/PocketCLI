@@ -29,6 +29,8 @@ class OpenCodeAdapter(
     }
 
     override fun events(sessionId: String): Flow<AgentEvent> {
+        val partTypes = java.util.concurrent.ConcurrentHashMap<String, String>()
+
         return sseClient.events()
             .mapNotNull { event ->
                 val payload = event.payload
@@ -68,18 +70,25 @@ class OpenCodeAdapter(
                             } else {
                                 MessageRole.ASSISTANT
                             }
-                            AgentEvent.MessageStarted(sessionId, msgId, role)
+                            if (role == MessageRole.USER) {
+                                null
+                            } else {
+                                AgentEvent.MessageStarted(sessionId, msgId, role)
+                            }
                         } else null
                     }
 
                     "message.part.delta" -> {
                         val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
                         val msgId = obj["messageID"]?.jsonPrimitive?.contentOrNull
+                        val partId = obj["partID"]?.jsonPrimitive?.contentOrNull
                         val field = obj["field"]?.jsonPrimitive?.contentOrNull
                         val delta = obj["delta"]?.jsonPrimitive?.contentOrNull
 
                         if (sid == sessionId && msgId != null && delta != null) {
-                            if (field.equals("reasoning", ignoreCase = true)) {
+                            val partType = if (partId != null) partTypes[partId] else null
+                            val isReasoning = field.equals("reasoning", ignoreCase = true) || partType == "reasoning"
+                            if (isReasoning) {
                                 AgentEvent.ReasoningDelta(msgId, delta)
                             } else {
                                 AgentEvent.TextDelta(msgId, delta)
@@ -90,14 +99,19 @@ class OpenCodeAdapter(
                     "message.part.updated" -> {
                         val part = obj["part"]?.jsonObject
                         val sid = part?.get("sessionID")?.jsonPrimitive?.contentOrNull
+                        val partId = part?.get("id")?.jsonPrimitive?.contentOrNull
                         val type = part?.get("type")?.jsonPrimitive?.contentOrNull
 
+                        if (partId != null && type != null) {
+                            partTypes[partId] = type
+                        }
+
                         if (sid == sessionId && type == "tool") {
-                            val msgId = part["messageID"]?.jsonPrimitive?.contentOrNull ?: ""
-                            val callId = part["callID"]?.jsonPrimitive?.contentOrNull
-                                ?: part["id"]?.jsonPrimitive?.contentOrNull ?: ""
-                            val toolName = part["tool"]?.jsonPrimitive?.contentOrNull ?: "unknown_tool"
-                            val state = part["state"]?.jsonObject
+                            val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
+                            val callId = part?.get("callID")?.jsonPrimitive?.contentOrNull
+                                ?: part?.get("id")?.jsonPrimitive?.contentOrNull ?: ""
+                            val toolName = part?.get("tool")?.jsonPrimitive?.contentOrNull ?: "unknown_tool"
+                            val state = part?.get("state")?.jsonObject
                             val statusStr = state?.get("status")?.jsonPrimitive?.contentOrNull ?: "completed"
                             val status = when (statusStr.lowercase()) {
                                 "running" -> ToolStatus.RUNNING
@@ -117,6 +131,38 @@ class OpenCodeAdapter(
                                 input = input,
                                 output = output
                             )
+                        } else if (sid == sessionId && type == "reasoning") {
+                            val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
+                            val text = part?.get("text")?.jsonPrimitive?.contentOrNull
+                            if (!text.isNullOrEmpty()) {
+                                AgentEvent.ReasoningDelta(msgId, text)
+                            } else null
+                        } else null
+                    }
+
+                    "message.part.removed" -> {
+                        val partId = obj["partID"]?.jsonPrimitive?.contentOrNull
+                        if (partId != null) partTypes.remove(partId)
+                        null
+                    }
+
+                    "todo.updated" -> {
+                        val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
+                        val todosArray = obj["todos"]?.jsonArray
+
+                        if ((sid == null || sid == sessionId) && todosArray != null) {
+                            val todoItems = todosArray.mapNotNull { item ->
+                                val itemObj = item as? JsonObject ?: return@mapNotNull null
+                                val content = itemObj["content"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                                val status = itemObj["status"]?.jsonPrimitive?.contentOrNull ?: "pending"
+                                val priority = itemObj["priority"]?.jsonPrimitive?.contentOrNull ?: "medium"
+                                TodoItem(
+                                    content = content,
+                                    status = status,
+                                    priority = priority
+                                )
+                            }
+                            AgentEvent.TodoUpdate(todoItems)
                         } else null
                     }
 

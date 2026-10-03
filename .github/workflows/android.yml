@@ -4,8 +4,7 @@ on:
   push:
     branches: [ "main" ]
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+      - 'v*'
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -146,10 +145,23 @@ jobs:
             IS_PRE_FLAG="--prerelease"
           fi
 
-          gh release create "v${VERSION_NAME}" \
-            "dist/pocketcli-${VERSION_NAME}-universal.apk" \
-            "dist/SHA256SUMS" \
-            "dist/update.json" \
-            --title "PocketCLI v${VERSION_NAME}" \
-            --generate-notes \
-            $IS_PRE_FLAG || echo "Release already exists or skipped"
+          if gh release view "v${VERSION_NAME}" >/dev/null 2>&1; then
+            echo "Release v${VERSION_NAME} already exists. Uploading/updating assets..."
+            gh release upload "v${VERSION_NAME}" \
+              "dist/pocketcli-${VERSION_NAME}-universal.apk" \
+              "dist/SHA256SUMS" \
+              "dist/update.json" \
+              --clobber
+          else
+            echo "Creating release v${VERSION_NAME}..."
+            gh release create "v${VERSION_NAME}" \
+              "dist/pocketcli-${VERSION_NAME}-universal.apk" \
+              "dist/SHA256SUMS" \
+              "dist/update.json" \
+              --title "PocketCLI v${VERSION_NAME}" \
+              --generate-notes \
+              $IS_PRE_FLAG
+          fi
+
+          echo "Verifying published release assets..."
+          gh release view "v${VERSION_NAME}"

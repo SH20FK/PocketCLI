@@ -27,5 +27,6 @@ data class ChatUiState(
     val selectedModel: ModelInfo? = null,
     val isModelPickerOpen: Boolean = false,
     val errorMessage: String? = null,
-    val streamingTail: StreamingTailUi? = null
+    val streamingTail: StreamingTailUi? = null,
+    val todos: List<TodoItem> = emptyList()
 )

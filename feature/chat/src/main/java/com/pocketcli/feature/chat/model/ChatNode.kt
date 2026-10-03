@@ -80,4 +80,9 @@ sealed interface ChatNode {
  override val id: String,
  val tail: StreamingTailUi
  ) : ChatNode
+
+ data class TodoNode(
+ override val id: String = "agent_todos_node",
+ val todos: List<com.pocketcli.core.model.TodoItem>
+ ) : ChatNode
 }

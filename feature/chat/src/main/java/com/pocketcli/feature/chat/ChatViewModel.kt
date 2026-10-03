@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat
+package com.pocketcli.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -72,6 +72,17 @@ class ChatViewModel @Inject constructor(
  launch {
  repository.reconcile(apiClient, resolvedProfileId, sessionId)
  }
+ launch {
+ apiClient.getTodos(sessionId).onSuccess { todosDto ->
+ val items = todosDto.map {
+ TodoItem(content = it.content, status = it.status, priority = it.priority)
+ }
+ _uiState.update { current ->
+ val nextState = current.copy(todos = items)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ }
  }
 
  // 4. Observe SSE events for this session
@@ -90,6 +101,12 @@ class ChatViewModel @Inject constructor(
  is AgentEvent.PermissionRequested -> {
  _uiState.update { current ->
  val nextState = current.copy(pendingPermission = event)
+ syncNodesAndComposer(nextState)
+ }
+ }
+ is AgentEvent.TodoUpdate -> {
+ _uiState.update { current ->
+ val nextState = current.copy(todos = event.todos)
  syncNodesAndComposer(nextState)
  }
  }
@@ -302,27 +319,45 @@ class ChatViewModel @Inject constructor(
 
  private fun syncNodesAndComposer(state: ChatUiState): ChatUiState {
  val nodes = mutableListOf<ChatNode>()
+ val seenKeys = mutableSetOf<String>()
+
+ fun uniqueKey(prefix: String, rawId: String): String {
+ val base = if (rawId.isNotBlank()) "${prefix}_$rawId" else "${prefix}_${System.identityHashCode(rawId)}"
+ var key = base
+ var counter = 1
+ while (!seenKeys.add(key)) {
+ key = "${base}_${counter++}"
+ }
+ return key
+ }
+
  for (msg in state.messages) {
  if (msg.role == MessageRole.USER) {
- nodes.add(ChatNode.UserNode(id = msg.id, text = msg.text, timestamp = msg.timestamp))
+ if (msg.text.isNotBlank()) {
+ nodes.add(ChatNode.UserNode(id = uniqueKey("user", msg.id), text = msg.text, timestamp = msg.timestamp))
+ }
  } else {
- nodes.add(ChatNode.AssistantNode(id = msg.id, message = msg, isStreaming = false))
+ nodes.add(ChatNode.AssistantNode(id = uniqueKey("asst", msg.id), message = msg, isStreaming = false))
  for (tool in msg.toolCalls) {
- nodes.add(ChatNode.ToolNode(id = tool.callId, toolCall = tool))
+ nodes.add(ChatNode.ToolNode(id = uniqueKey("tool", tool.callId), toolCall = tool))
  }
  }
  }
 
  state.activeDiffFile?.let { (path, diff) ->
- nodes.add(ChatNode.DiffNode(id = "diff_$path", filePath = path, diffContent = diff))
+ nodes.add(ChatNode.DiffNode(id = uniqueKey("diff", path), filePath = path, diffContent = diff))
  }
 
  state.pendingPermission?.let { perm ->
- nodes.add(ChatNode.PermissionNode(id = "perm_${perm.requestId}", request = perm))
+ nodes.add(ChatNode.PermissionNode(id = uniqueKey("perm", perm.requestId), request = perm))
+ }
+
+ if (state.todos.isNotEmpty()) {
+ nodes.add(ChatNode.TodoNode(id = uniqueKey("todos", "agent_todos"), todos = state.todos))
  }
 
  if (state.streamingTail != null && state.sessionState == SessionState.BUSY) {
- nodes.add(ChatNode.StreamingTailNode(id = "tail_${state.streamingTail.messageId}", tail = state.streamingTail))
+ nodes.add(ChatNode.StreamingTailNode(id = uniqueKey("tail", state.streamingTail.messageId), tail = state.streamingTail))
  }
 
  val mode = when {

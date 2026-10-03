@@ -16,3 +16,4 @@ local.properties
 **/build/
 *providers_response.json
 check_ci.py
+scratch/

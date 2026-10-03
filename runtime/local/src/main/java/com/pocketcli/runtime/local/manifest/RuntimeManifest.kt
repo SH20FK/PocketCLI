@@ -13,7 +13,14 @@ data class RuntimeManifest(
 @Serializable
 data class ArchArtifacts(
     val rootfs: ArtifactInfo,
-    val opencode: ArtifactInfo
+    val opencode: ArtifactInfo,
+    val packages: List<RuntimePackage> = emptyList()
+)
+
+@Serializable
+data class RuntimePackage(
+    val name: String,
+    val artifact: ArtifactInfo
 )
 
 @Serializable

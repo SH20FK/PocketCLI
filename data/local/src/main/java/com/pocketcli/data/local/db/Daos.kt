@@ -103,6 +103,12 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE profileId = :profileId AND sessionId = :sessionId AND messageId = :messageId LIMIT 1")
     suspend fun getMessage(profileId: String, sessionId: String, messageId: String): MessageEntity?
+
+    @Query("SELECT * FROM messages WHERE profileId = :profileId AND sessionId = :sessionId")
+    suspend fun getMessagesList(profileId: String, sessionId: String): List<MessageEntity>
+
+    @Query("DELETE FROM messages WHERE profileId = :profileId AND sessionId = :sessionId AND messageId = :messageId")
+    suspend fun delete(profileId: String, sessionId: String, messageId: String)
 }
 
 @Dao

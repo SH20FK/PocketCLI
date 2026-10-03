@@ -361,6 +361,9 @@ class AgentSessionRepository @Inject constructor(
      */
     suspend fun reconcile(apiClient: OpenCodeApiClient, profileId: String, sessionId: String) {
         val remoteMessages = apiClient.getMessages(sessionId).getOrNull() ?: return
+        val existingMessages = database.messageDao().getMessagesList(profileId, sessionId)
+        val optimisticUserMessages = existingMessages.filter { it.role == MessageRole.USER.name }.toMutableList()
+
         for (item in remoteMessages) {
             val role = if (item.info.role.equals("user", ignoreCase = true)) MessageRole.USER else MessageRole.ASSISTANT
             var fullText = ""
@@ -397,6 +400,17 @@ class AgentSessionRepository @Inject constructor(
                             )
                         )
                     }
+                }
+            }
+
+            // Deduplicate optimistic user message
+            if (role == MessageRole.USER) {
+                val matchingOptimistic = optimisticUserMessages.firstOrNull {
+                    it.messageId != item.info.id && it.text == fullText
+                }
+                if (matchingOptimistic != null) {
+                    database.messageDao().delete(profileId, sessionId, matchingOptimistic.messageId)
+                    optimisticUserMessages.remove(matchingOptimistic)
                 }
             }
 

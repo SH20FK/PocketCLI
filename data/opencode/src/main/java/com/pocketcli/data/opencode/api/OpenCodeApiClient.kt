@@ -180,7 +180,7 @@ class OpenCodeApiClient(
     suspend fun replyPermission(requestId: String, reply: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val reqPayload = buildJsonObject {
-                put("reply", reply)
+                put("response", reply)
             }
             val body = reqPayload.toString().toRequestBody(jsonMediaType)
             val request = Request.Builder()
@@ -193,6 +193,24 @@ class OpenCodeApiClient(
                     val errorBody = response.body?.string().orEmpty()
                     throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
                 }
+            }
+        }
+    }
+
+    suspend fun getTodos(sessionId: String): Result<List<OpenCodeTodoDto>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder()
+                .url(buildUrl("/session/$sessionId/todo"))
+                .get()
+                .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string().orEmpty()
+                    throw IOException("HTTP ${response.code}: ${response.message}${if (errorBody.isNotEmpty()) " - $errorBody" else ""}")
+                }
+                val respBody = response.body?.string().orEmpty()
+                json.decodeFromString<List<OpenCodeTodoDto>>(respBody)
             }
         }
     }
@@ -215,3 +233,10 @@ class OpenCodeApiClient(
         }
     }
 }
+
+@Serializable
+data class OpenCodeTodoDto(
+    val content: String,
+    val status: String,
+    val priority: String = "medium"
+)

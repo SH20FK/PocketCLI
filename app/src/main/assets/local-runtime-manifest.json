@@ -20,7 +20,42 @@
         ],
         "sha256": "388b9380d5e203cee9aec071d810a8ab6a717702f94f932ef2446829ec035a92",
         "sizeBytes": 44518105
-      }
+      },
+      "packages": [
+        {
+          "name": "libgcc",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/aarch64/libgcc-14.2.0-r4.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/libgcc-14.2.0-r4.apk"
+            ],
+            "sha256": "7cfdc00f102d3b98fe563b31e7a59a7b7ab61850c1751915f34e419e83ef2653",
+            "sizeBytes": 66943
+          }
+        },
+        {
+          "name": "libstdc++",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/aarch64/libstdc++-14.2.0-r4.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/libstdc++-14.2.0-r4.apk"
+            ],
+            "sha256": "93dded5af4e42ca59a2e981ffc5acc59c5d7110cec4adaeb15b84dc224526b63",
+            "sizeBytes": 906144
+          }
+        },
+        {
+          "name": "ca-certificates-bundle",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/aarch64/ca-certificates-bundle-20260909-r0.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/ca-certificates-bundle-20260909-r0.apk"
+            ],
+            "sha256": "46aa3bd5988d0bed141242d957a52e4c871066ae4ae1c97195accc0b73e5b94a",
+            "sizeBytes": 108469
+          }
+        }
+      ]
     },
     "x86_64": {
       "rootfs": {
@@ -39,7 +74,43 @@
         ],
         "sha256": "57c28b1787e30590c299d34d90aee9dbb6d8ad59aa83702643fb43c9f2bc9157",
         "sizeBytes": 44397267
-      }
+      },
+      "packages": [
+        {
+          "name": "libgcc",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/x86_64/libgcc-14.2.0-r4.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/libgcc-14.2.0-r4.apk"
+            ],
+            "sha256": "8675867db77b5af11b88fd19186450333202d94cccd84a76a066dccd5b6e8cf1",
+            "sizeBytes": 81487
+          }
+        },
+        {
+          "name": "libstdc++",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/x86_64/libstdc++-14.2.0-r4.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/libstdc++-14.2.0-r4.apk"
+            ],
+            "sha256": "5899f66390aba2ac908f0912fc62a49775830f523fa38fab406c1761821dfb07",
+            "sizeBytes": 942494
+          }
+        },
+        {
+          "name": "ca-certificates-bundle",
+          "artifact": {
+            "url": "https://mirror.yandex.ru/mirrors/alpine/v3.21/main/x86_64/ca-certificates-bundle-20260909-r0.apk",
+            "mirrors": [
+              "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/ca-certificates-bundle-20260909-r0.apk"
+            ],
+            "sha256": "46a86ac9de69be7e341fc1b611bd61b88d96c09492f1aa8a4ca0a7592011e03b",
+            "sizeBytes": 108483
+          }
+        }
+      ]
+    }
     }
   }
 }

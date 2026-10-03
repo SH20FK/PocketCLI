@@ -85,6 +85,7 @@ fun ChatTimeline(
                     is ChatNode.PermissionNode -> PocketSpacing.sm
                     is ChatNode.DiffNode -> PocketSpacing.sm
                     is ChatNode.StreamingTailNode -> PocketSpacing.xs
+                    is ChatNode.TodoNode -> PocketSpacing.sm
                 }
 
                 when (node) {
@@ -123,6 +124,9 @@ fun ChatTimeline(
                     }
                     is ChatNode.StreamingTailNode -> {
                         StreamingTail(tail = node.tail)
+                    }
+                    is ChatNode.TodoNode -> {
+                        TodoCard(todos = node.todos)
                     }
                 }
 

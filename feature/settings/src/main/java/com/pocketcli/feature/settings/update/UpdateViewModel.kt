@@ -21,7 +21,12 @@ class UpdateViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         UpdateUiState(
             currentVersionName = getAppVersionName(),
-            currentVersionCode = getAppVersionCode()
+            currentVersionCode = getAppVersionCode(),
+            selectedChannel = if (getAppVersionName().contains(Regex("(-beta|-alpha|-rc)", RegexOption.IGNORE_CASE))) {
+                UpdateChannel.BETA
+            } else {
+                UpdateChannel.STABLE
+            }
         )
     )
     val uiState: StateFlow<UpdateUiState> = _uiState.asStateFlow()
@@ -75,6 +80,14 @@ class UpdateViewModel @Inject constructor(
                 }
                 is UpdateCheckResult.UpToDate -> {
                     _uiState.update { it.copy(status = UpdateStatus.UpToDate()) }
+                }
+                is UpdateCheckResult.NoRelease -> {
+                    val msg = if (result.channel == UpdateChannel.STABLE) {
+                        "Стабильных выпусков пока нет. Можно переключиться на Beta или открыть страницу релизов."
+                    } else {
+                        "Выпусков в канале ${result.channel.displayName} пока нет."
+                    }
+                    _uiState.update { it.copy(status = UpdateStatus.NoRelease(result.channel, msg)) }
                 }
                 is UpdateCheckResult.Error -> {
                     _uiState.update {

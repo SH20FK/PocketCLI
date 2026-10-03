@@ -13,6 +13,7 @@ import javax.inject.Singleton
 sealed interface UpdateCheckResult {
     data class UpdateAvailable(val manifest: UpdateManifest) : UpdateCheckResult
     data class UpToDate(val currentVersionCode: Long) : UpdateCheckResult
+    data class NoRelease(val channel: UpdateChannel) : UpdateCheckResult
     data class Error(val message: String) : UpdateCheckResult
 }
 
@@ -41,19 +42,28 @@ class UpdateRepository @Inject constructor(
         currentVersionCode: Long,
         channel: UpdateChannel = UpdateChannel.STABLE
     ): UpdateCheckResult = withContext(Dispatchers.IO) {
-        val result = releaseApi.fetchLatestManifest(channel = channel)
-        result.fold(
-            onSuccess = { manifest ->
+        when (val result = releaseApi.fetchLatestManifest(channel = channel)) {
+            is ManifestFetchResult.Found -> {
+                val manifest = result.manifest
                 if (updateChecker.isUpdateAvailable(currentVersionCode, manifest)) {
                     UpdateCheckResult.UpdateAvailable(manifest)
                 } else {
                     UpdateCheckResult.UpToDate(currentVersionCode)
                 }
-            },
-            onFailure = { error ->
-                UpdateCheckResult.Error(error.localizedMessage ?: "Не удалось проверить обновления")
             }
-        )
+            is ManifestFetchResult.NoRelease -> {
+                UpdateCheckResult.NoRelease(channel)
+            }
+            is ManifestFetchResult.MissingAsset -> {
+                UpdateCheckResult.Error("В релизе ${result.tag} отсутствует файл ${result.asset}")
+            }
+            is ManifestFetchResult.InvalidManifest -> {
+                UpdateCheckResult.Error("Манифест релиза ${result.tag} повреждён: ${result.reason}")
+            }
+            is ManifestFetchResult.NetworkError -> {
+                UpdateCheckResult.Error("Сетевая ошибка: ${result.reason}")
+            }
+        }
     }
 
     fun downloadApk(url: String, targetFile: File): Flow<DownloadProgress> {

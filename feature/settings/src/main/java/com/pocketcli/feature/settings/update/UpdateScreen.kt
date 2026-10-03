@@ -299,6 +299,28 @@ fun UpdateScreen(
                         }
                     }
 
+                    is UpdateStatus.NoRelease -> {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(
+                                    text = status.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (status.channel == UpdateChannel.STABLE) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    OutlinedButton(onClick = { viewModel.setChannel(UpdateChannel.BETA) }) {
+                                        Text("Переключиться на Beta")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     UpdateStatus.Idle -> Unit
                 }
             }

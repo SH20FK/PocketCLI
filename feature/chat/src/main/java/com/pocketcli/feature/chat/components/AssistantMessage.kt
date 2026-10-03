@@ -40,7 +40,14 @@ fun AssistantMessage(
     isStreaming: Boolean = false
 ) {
     val clipboardManager = LocalClipboardManager.current
-    var isReasoningExpanded by remember { mutableStateOf(false) }
+    val hasReasoning = !message.reasoning.isNullOrBlank()
+    var isReasoningExpanded by remember { mutableStateOf(isStreaming && hasReasoning && message.text.isBlank()) }
+
+    LaunchedEffect(isStreaming, hasReasoning, message.text.isBlank()) {
+        if (isStreaming && hasReasoning && message.text.isBlank()) {
+            isReasoningExpanded = true
+        }
+    }
 
     Column(
         modifier = modifier

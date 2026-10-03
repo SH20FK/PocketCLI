@@ -9,6 +9,7 @@ sealed interface UpdateStatus {
     object Idle : UpdateStatus
     object Checking : UpdateStatus
     data class UpToDate(val checkedAt: Long = System.currentTimeMillis()) : UpdateStatus
+    data class NoRelease(val channel: UpdateChannel, val message: String) : UpdateStatus
     data class Available(val manifest: UpdateManifest) : UpdateStatus
     data class Downloading(val progress: DownloadProgress, val manifest: UpdateManifest) : UpdateStatus
     data class Verifying(val step: String, val manifest: UpdateManifest) : UpdateStatus

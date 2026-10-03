@@ -20,8 +20,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 import java.security.MessageDigest
 import java.util.zip.GZIPOutputStream
 
@@ -333,10 +336,173 @@ class RuntimeInstallerTest {
         assertTrue(installer.state.value is InstallState.Ready)
     }
 
+    @Test
+    fun testPreflightExitCodeFailureStopsInstall() = runTest(testDispatcher) {
+        val rootfsTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "bin/sh", content = "sh".toByteArray()))
+        )
+        val opencodeTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "package/bin/opencode", content = "opencode-bin".toByteArray()))
+        )
+        val rootfsSha = computeSha256(rootfsTarGz)
+        val opencodeSha = computeSha256(opencodeTarGz)
+
+        val manifestJson = """
+        {
+            "manifestVersion": 1,
+            "runtimeVersion": "1.2.27",
+            "alpineVersion": "3.21.3",
+            "artifacts": {
+                "x86_64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
+                }
+            }
+        }
+        """.trimIndent()
+
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(rootfsTarGz)))
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(opencodeTarGz)))
+
+        val installer = createInstaller(
+            manifestJson = manifestJson,
+            processLauncher = { _, _ -> FakePreflightProcess(exitCode = 127, outputText = "", errText = "command not found") }
+        )
+
+        val result = installer.install()
+        assertTrue("Install should fail when preflight fails", result.isFailure)
+        assertFalse(installer.isInstalled())
+        assertTrue(installer.state.value is InstallState.Failed)
+        val failed = installer.state.value as InstallState.Failed
+        assertTrue(failed.canRetry)
+        assertTrue(failed.error.contains("Локальный runtime установлен неполностью"))
+    }
+
+    @Test
+    fun testPreflightMissingSymbolsStopsInstall() = runTest(testDispatcher) {
+        val rootfsTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "bin/sh", content = "sh".toByteArray()))
+        )
+        val opencodeTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "package/bin/opencode", content = "opencode-bin".toByteArray()))
+        )
+        val rootfsSha = computeSha256(rootfsTarGz)
+        val opencodeSha = computeSha256(opencodeTarGz)
+
+        val manifestJson = """
+        {
+            "manifestVersion": 1,
+            "runtimeVersion": "1.2.27",
+            "alpineVersion": "3.21.3",
+            "artifacts": {
+                "x86_64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
+                }
+            }
+        }
+        """.trimIndent()
+
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(rootfsTarGz)))
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(opencodeTarGz)))
+
+        val installer = createInstaller(
+            manifestJson = manifestJson,
+            processLauncher = { _, _ -> FakePreflightProcess(exitCode = 0, outputText = "1.2.27", errText = "Error relocating /usr/bin/opencode: symbol not found: _ZSt...") }
+        )
+
+        val result = installer.install()
+        assertTrue("Install should fail when symbol not found in preflight", result.isFailure)
+        assertFalse(installer.isInstalled())
+        assertTrue(installer.state.value is InstallState.Failed)
+        val failed = installer.state.value as InstallState.Failed
+        assertTrue(failed.error.contains("symbol not found"))
+    }
+
+    @Test
+    fun testInstallWithAlpinePackages() = runTest(testDispatcher) {
+        val rootfsTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "bin/sh", content = "sh".toByteArray()))
+        )
+        val opencodeTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "package/bin/opencode", content = "opencode-bin".toByteArray()))
+        )
+        val packageTarGz = createTarGzArchive(
+            listOf(TarTestEntry(name = "usr/lib/libstdc++.so.6", content = "libstdc++-content".toByteArray()))
+        )
+
+        val rootfsSha = computeSha256(rootfsTarGz)
+        val opencodeSha = computeSha256(opencodeTarGz)
+        val packageSha = computeSha256(packageTarGz)
+
+        val manifestJson = """
+        {
+            "manifestVersion": 1,
+            "runtimeVersion": "1.2.27",
+            "alpineVersion": "3.21.3",
+            "artifacts": {
+                "x86_64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    },
+                    "packages": [
+                        {
+                            "name": "libstdc++",
+                            "artifact": {
+                                "url": "${mockWebServer.url("/libstdc++.apk")}",
+                                "sha256": "$packageSha",
+                                "sizeBytes": ${packageTarGz.size}
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+        """.trimIndent()
+
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(rootfsTarGz)))
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(opencodeTarGz)))
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(packageTarGz)))
+
+        val installer = createInstaller(manifestJson = manifestJson)
+        val result = installer.install()
+        assertTrue("Install with packages should succeed: ${result.exceptionOrNull()?.message}", result.isSuccess)
+        assertTrue(installer.isInstalled())
+
+        val rootfsDir = File(filesDir, "runtime/rootfs")
+        val libFile = File(rootfsDir, "usr/lib/libstdc++.so.6")
+        assertTrue("libstdc++.so.6 should exist in rootfs", libFile.exists())
+        assertEquals("libstdc++-content", libFile.readText())
+    }
+
     private fun createInstaller(
         manifestJson: String,
         supportedAbis: Array<String> = arrayOf("x86_64"),
-        freeSpace: Long = 1024L * 1024L * 1024L // 1 GB
+        freeSpace: Long = 1024L * 1024L * 1024L, // 1 GB
+        processLauncher: (List<String>, Map<String, String>) -> Process = { _, _ -> FakePreflightProcess() }
     ): RuntimeInstaller {
         return RuntimeInstaller(
             prootEnvironment = prootEnv,
@@ -346,8 +512,29 @@ class RuntimeInstallerTest {
             filesDirProvider = { filesDir },
             supportedAbisProvider = { supportedAbis },
             freeSpaceProvider = { freeSpace },
-            manifestContentProvider = { manifestJson }
+            manifestContentProvider = { manifestJson },
+            processLauncher = processLauncher
         )
+    }
+
+    private class FakePreflightProcess(
+        private val exitCode: Int = 0,
+        private val outputText: String = "1.2.27",
+        private val errText: String = ""
+    ) : Process() {
+        private val stdout = ByteArrayInputStream(outputText.toByteArray())
+        private val stderr = ByteArrayInputStream(errText.toByteArray())
+        private val sink = ByteArrayOutputStream()
+
+        override fun getOutputStream(): OutputStream = sink
+        override fun getInputStream(): InputStream = stdout
+        override fun getErrorStream(): InputStream = stderr
+        override fun waitFor(): Int = exitCode
+        override fun waitFor(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
+        override fun exitValue(): Int = exitCode
+        override fun destroy() {}
+        override fun destroyForcibly(): Process = this
+        override fun isAlive(): Boolean = false
     }
 
     private data class TarTestEntry(

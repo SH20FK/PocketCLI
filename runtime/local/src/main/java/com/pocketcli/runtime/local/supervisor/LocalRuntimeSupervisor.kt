@@ -191,18 +191,35 @@ open class LocalRuntimeSupervisor(
             }
 
             val guestWorkspace = "/workspace"
-            val command = listOf(
-                "/usr/bin/opencode",
-                "serve",
-                "--hostname",
-                host,
-                "--port",
-                port.toString()
+            val providerKeys = providerKeyProvider()
+
+            val guestCommand = mutableListOf(
+                "/usr/bin/env",
+                "-i",
+                "HOME=/root",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin",
+                "TERM=xterm-256color",
+                "LANG=C.UTF-8",
+                "OPENCODE_SERVER_PASSWORD=$token",
+                "PORT=$port"
+            )
+            for ((k, v) in providerKeys) {
+                guestCommand.add("$k=$v")
+            }
+            guestCommand.addAll(
+                listOf(
+                    "/usr/bin/opencode",
+                    "serve",
+                    "--hostname",
+                    host,
+                    "--port",
+                    port.toString()
+                )
             )
 
             val prootCmd = prootEnvironment.buildProotCommand(
                 rootfsDir = runtimeInstaller.rootfsDir,
-                command = command,
+                command = guestCommand,
                 binds = listOf(Pair(workspacesDir, guestWorkspace)),
                 workingDir = guestWorkspace
             )
@@ -211,9 +228,6 @@ open class LocalRuntimeSupervisor(
             env.putAll(prootEnvironment.getDefaultEnvironment())
             env["OPENCODE_SERVER_PASSWORD"] = token
             env["PORT"] = port.toString()
-
-            // Inject API keys from providerKeyProvider
-            val providerKeys = providerKeyProvider()
             env.putAll(providerKeys)
 
             logBuffer.append("[Supervisor] Команда: ${prootCmd.joinToString(" ")}")

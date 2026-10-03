@@ -34,8 +34,11 @@ object TarExtractor {
 
         while (true) {
             val bytesRead = readFully(inputStream, headerBuffer)
-            if (bytesRead < 512 || isAllZeros(headerBuffer)) {
+            if (bytesRead < 512) {
                 break
+            }
+            if (isAllZeros(headerBuffer)) {
+                continue
             }
 
             val rawName = nextLongName ?: parseString(headerBuffer, 0, 100)
@@ -44,6 +47,14 @@ object TarExtractor {
             val typeFlag = headerBuffer[156].toInt().toChar()
             val size = parseOctal(headerBuffer, 124, 12)
             val mode = parseOctal(headerBuffer, 100, 8).toInt()
+
+            // Skip PAX extended headers
+            if (typeFlag == 'x' || typeFlag == 'g') {
+                val padding = (512 - (size % 512).toInt()) % 512
+                if (size > 0) skipFully(inputStream, size)
+                if (padding > 0) skipFully(inputStream, padding.toLong())
+                continue
+            }
 
             // Handle GNU long filename
             if (typeFlag == 'L') {

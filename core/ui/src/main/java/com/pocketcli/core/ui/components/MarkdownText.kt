@@ -46,15 +46,22 @@ fun StreamingMarkdownText(
     modifier: Modifier = Modifier
 ) {
     var throttledContent by remember { mutableStateOf(markdown) }
+    var lastUpdateTime by remember { mutableLongStateOf(0L) }
 
     if (isStreaming) {
-        // Throttle updates to at most 5 times per second (200ms)
         LaunchedEffect(markdown) {
-            delay(200L)
-            throttledContent = markdown
+            val now = System.currentTimeMillis()
+            val elapsed = now - lastUpdateTime
+            if (elapsed >= 200L) {
+                throttledContent = markdown
+                lastUpdateTime = now
+            } else {
+                delay(200L - elapsed)
+                throttledContent = markdown
+                lastUpdateTime = System.currentTimeMillis()
+            }
         }
     } else {
-        // Final render: instant update
         throttledContent = markdown
     }
 
@@ -62,10 +69,19 @@ fun StreamingMarkdownText(
         MarkdownSanitizer.normalizeForStreaming(throttledContent)
     }
 
-    Markdown(
-        content = normalized,
-        modifier = modifier.fillMaxWidth()
-    )
+    try {
+        Markdown(
+            content = normalized,
+            modifier = modifier.fillMaxWidth()
+        )
+    } catch (_: Throwable) {
+        Text(
+            text = normalized,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

@@ -39,6 +39,14 @@ data class PlanEntry(
     val isCompleted: Boolean
 )
 
+@Serializable
+data class TodoItem(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val content: String,
+    val status: String, // pending, in_progress, completed, cancelled
+    val priority: String = "medium" // high, medium, low
+)
+
 sealed interface AgentEvent {
     data class SessionStatus(val sessionId: String, val state: SessionState) : AgentEvent
     data class MessageStarted(val sessionId: String, val messageId: String, val role: MessageRole) : AgentEvent
@@ -59,6 +67,7 @@ sealed interface AgentEvent {
         val options: List<PermissionOption> = listOf(PermissionOption.ONCE, PermissionOption.ALWAYS, PermissionOption.REJECT)
     ) : AgentEvent
     data class PlanUpdate(val entries: List<PlanEntry>) : AgentEvent
+    data class TodoUpdate(val todos: List<TodoItem>) : AgentEvent
     data class FileDiff(val path: String, val unifiedDiff: String) : AgentEvent
     data class Error(val message: String, val recoverable: Boolean) : AgentEvent
 }

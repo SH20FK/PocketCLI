@@ -29,6 +29,12 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.pocketcli.runtime.local.manifest.RuntimePackage
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
 sealed interface InstallState {
     object NotInstalled : InstallState
     object CheckingPrerequisites : InstallState
@@ -58,7 +64,10 @@ open class RuntimeInstaller(
     private val filesDirProvider: () -> File,
     private val supportedAbisProvider: () -> Array<String> = { Build.SUPPORTED_ABIS },
     private val freeSpaceProvider: () -> Long = { filesDirProvider().freeSpace },
-    private val manifestContentProvider: () -> String
+    private val manifestContentProvider: () -> String,
+    private val processLauncher: (List<String>, Map<String, String>) -> Process = { cmd, env ->
+        ProcessBuilder(cmd).apply { environment().putAll(env) }.start()
+    }
 ) {
     companion object {
         fun defaultOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
@@ -215,6 +224,14 @@ open class RuntimeInstaller(
             val opencodeFile = File(downloadDir, "opencode-$arch-${manifest.runtimeVersion}.tgz")
             downloadAndVerifyArtifact(archArtifacts.opencode, "OpenCode Server", opencodeFile)
 
+            // 6.5. Download alpine packages (libgcc, libstdc++, ca-certificates)
+            val packageFiles = mutableListOf<Pair<RuntimePackage, File>>()
+            for (pkg in archArtifacts.packages) {
+                val pkgFile = File(downloadDir, "${pkg.name}-$arch.apk")
+                downloadAndVerifyArtifact(pkg.artifact, "Alpine package ${pkg.name}", pkgFile)
+                packageFiles.add(Pair(pkg, pkgFile))
+            }
+
             // 7. Extract to staging
             if (stagingDir.exists()) {
                 stagingDir.deleteRecursively()
@@ -224,6 +241,14 @@ open class RuntimeInstaller(
             _state.value = InstallState.Extracting(0, 0, "Alpine Linux Rootfs")
             TarExtractor.extractTarGz(rootfsFile.inputStream(), stagingDir) { count, bytes ->
                 _state.value = InstallState.Extracting(count, bytes, "Alpine Linux Rootfs")
+            }
+
+            // Extract packages into staging rootfs
+            for ((pkg, pkgFile) in packageFiles) {
+                _state.value = InstallState.Extracting(0, 0, "Пакет ${pkg.name}")
+                TarExtractor.extractTarGz(pkgFile.inputStream(), stagingDir) { count, bytes ->
+                    _state.value = InstallState.Extracting(count, bytes, "Пакет ${pkg.name}")
+                }
             }
 
             _state.value = InstallState.Extracting(0, 0, "OpenCode Server")
@@ -259,7 +284,20 @@ open class RuntimeInstaller(
             _state.value = InstallState.Configuring("Настройка DNS и сетевых параметров")
             configureRootfs(stagingDir)
 
-            // 9. Atomic swap
+            // 9. Preflight check: opencode --version via PRoot
+            _state.value = InstallState.Configuring("Проверка библиотек и запуска OpenCode")
+            val preflightResult = runPreflight(stagingDir, arch)
+            if (preflightResult.isFailure) {
+                val failure = preflightResult.exceptionOrNull()
+                val err = "Локальный runtime установлен неполностью: отсутствуют системные библиотеки"
+                val detailedErr = "$err (${failure?.message})"
+                _state.value = InstallState.Failed(detailedErr, canRetry = true)
+                markerFile.delete()
+                stagingDir.deleteRecursively()
+                return@withContext Result.failure(IllegalStateException(detailedErr))
+            }
+
+            // 10. Atomic swap
             _state.value = InstallState.Configuring("Активация рантайма")
             if (rootfsDir.exists()) {
                 rootfsDir.deleteRecursively()
@@ -270,7 +308,7 @@ open class RuntimeInstaller(
                 stagingDir.deleteRecursively()
             }
 
-            // 10. Marker
+            // 11. Marker
             writeMarker(rootfsDir, manifest.runtimeVersion, manifest.alpineVersion)
 
             _state.value = InstallState.Ready(manifest.runtimeVersion)
@@ -524,6 +562,75 @@ open class RuntimeInstaller(
             } else {
                 file.copyTo(dest, overwrite = true)
             }
+        }
+    }
+
+    open fun runPreflight(targetRootfs: File, arch: String): Result<String> {
+        val preflightCmd = prootEnvironment.buildProotCommand(
+            rootfsDir = targetRootfs,
+            command = listOf(
+                "/usr/bin/env",
+                "-i",
+                "HOME=/root",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin",
+                "TERM=xterm-256color",
+                "LANG=C.UTF-8",
+                "/usr/bin/opencode",
+                "--version"
+            ),
+            workingDir = "/"
+        )
+        val env = prootEnvironment.getDefaultEnvironment()
+        return try {
+            val process = processLauncher(preflightCmd, env)
+            val stdout = StringBuilder()
+            val stderr = StringBuilder()
+            val outThread = Thread {
+                process.inputStream.bufferedReader().use { stdout.append(it.readText()) }
+            }
+            val errThread = Thread {
+                process.errorStream.bufferedReader().use { stderr.append(it.readText()) }
+            }
+            outThread.start()
+            errThread.start()
+
+            val finished = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                process.waitFor(10, TimeUnit.SECONDS)
+            } else {
+                var count = 0
+                while (count < 100 && process.isAlive) {
+                    Thread.sleep(100)
+                    count++
+                }
+                !process.isAlive
+            }
+
+            if (!finished) {
+                process.destroyForcibly()
+                return Result.failure(IllegalStateException("Таймаут проверки opencode --version (> 10s)"))
+            }
+            outThread.join(1000)
+            errThread.join(1000)
+
+            val exitCode = process.exitValue()
+            val stdoutText = stdout.toString().trim()
+            val stderrText = stderr.toString().trim()
+
+            if (exitCode != 0) {
+                return Result.failure(IllegalStateException("Preflight exit code $exitCode. stderr: $stderrText [arch=$arch]"))
+            }
+            if (stdoutText.isBlank()) {
+                return Result.failure(IllegalStateException("Preflight returned empty output. stderr: $stderrText [arch=$arch]"))
+            }
+            if (stderrText.contains("Error relocating", ignoreCase = true) ||
+                stderrText.contains("symbol not found", ignoreCase = true) ||
+                stderrText.contains("not found", ignoreCase = true)
+            ) {
+                return Result.failure(IllegalStateException("Preflight library error: $stderrText [arch=$arch]"))
+            }
+            Result.success(stdoutText)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
