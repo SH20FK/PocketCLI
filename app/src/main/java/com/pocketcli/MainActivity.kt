@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.*
+import androidx.navigation.toRoute
 import com.pocketcli.core.ui.theme.PocketCLITheme
 import com.pocketcli.feature.chat.ChatScreen
 import com.pocketcli.feature.chat.ChatViewModel
