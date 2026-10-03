@@ -2,8 +2,8 @@ package com.pocketcli.core.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.util.Base64
 import java.security.KeyStore
+import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -58,8 +58,8 @@ class AndroidKeystoreSecretStore @Inject constructor() : SecretStore {
         val iv = cipher.iv
         val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
 
-        val ivBase64 = Base64.encodeToString(iv, Base64.NO_WRAP)
-        val cipherBase64 = Base64.encodeToString(ciphertext, Base64.NO_WRAP)
+        val ivBase64 = Base64.getEncoder().encodeToString(iv)
+        val cipherBase64 = Base64.getEncoder().encodeToString(ciphertext)
         return "$ivBase64:$cipherBase64"
     }
 
@@ -68,8 +68,8 @@ class AndroidKeystoreSecretStore @Inject constructor() : SecretStore {
         val parts = encryptedPayload.split(":")
         if (parts.size != 2) return ""
 
-        val iv = Base64.decode(parts[0], Base64.NO_WRAP)
-        val ciphertext = Base64.decode(parts[1], Base64.NO_WRAP)
+        val iv = Base64.getDecoder().decode(parts[0])
+        val ciphertext = Base64.getDecoder().decode(parts[1])
 
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
