@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":core:security"))
     implementation(project(":data:local"))
 
+    implementation(libs.androidx.core.ktx)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
