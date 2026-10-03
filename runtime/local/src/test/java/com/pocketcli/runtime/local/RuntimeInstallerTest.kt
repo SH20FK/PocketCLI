@@ -95,8 +95,22 @@ class RuntimeInstallerTest {
 
     @Test
     fun testPrerequisiteInsufficientSpaceFails() = runTest(testDispatcher) {
+        val validManifest = """
+        {
+            "manifestVersion": 1,
+            "runtimeVersion": "1.2.27",
+            "alpineVersion": "3.21.3",
+            "artifacts": {
+                "x86_64": {
+                    "rootfs": {"url":"http://localhost/r.tar.gz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100},
+                    "opencode": {"url":"http://localhost/o.tgz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100}
+                }
+            }
+        }
+        """.trimIndent()
+
         val installer = createInstaller(
-            manifestJson = "{}",
+            manifestJson = validManifest,
             freeSpace = 50L * 1024L * 1024L // 50MB < 350MB
         )
         val result = installer.install()

@@ -56,8 +56,13 @@ object TarExtractor {
             }
 
             // Clean path
-            val cleanName = rawName.trimStart('/', '.').replace('\\', '/')
-            if (cleanName.isBlank()) {
+            val cleanName = when {
+                rawName.startsWith("./") -> rawName.substring(2)
+                rawName.startsWith("/") -> rawName.substring(1)
+                else -> rawName
+            }.replace('\\', '/')
+
+            if (cleanName.isBlank() || cleanName == ".") {
                 val padding = (512 - (size % 512).toInt()) % 512
                 if (size > 0) skipFully(inputStream, size)
                 if (padding > 0) skipFully(inputStream, padding.toLong())
