@@ -364,6 +364,18 @@ class RuntimeInstallerTest {
                         "sha256": "$opencodeSha",
                         "sizeBytes": ${opencodeTarGz.size}
                     }
+                },
+                "aarch64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
                 }
             }
         }
@@ -404,6 +416,18 @@ class RuntimeInstallerTest {
             "alpineVersion": "3.21.3",
             "artifacts": {
                 "x86_64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
+                },
+                "aarch64": {
                     "rootfs": {
                         "url": "${mockWebServer.url("/rootfs.tar.gz")}",
                         "sha256": "$rootfsSha",
@@ -478,6 +502,18 @@ class RuntimeInstallerTest {
                             }
                         }
                     ]
+                },
+                "aarch64": {
+                    "rootfs": {
+                        "url": "${mockWebServer.url("/rootfs.tar.gz")}",
+                        "sha256": "$rootfsSha",
+                        "sizeBytes": ${rootfsTarGz.size}
+                    },
+                    "opencode": {
+                        "url": "${mockWebServer.url("/opencode.tgz")}",
+                        "sha256": "$opencodeSha",
+                        "sizeBytes": ${opencodeTarGz.size}
+                    }
                 }
             }
         }
