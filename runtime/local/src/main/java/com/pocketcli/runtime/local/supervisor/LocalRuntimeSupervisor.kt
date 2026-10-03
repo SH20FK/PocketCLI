@@ -3,8 +3,8 @@ package com.pocketcli.runtime.local.supervisor
 import com.pocketcli.core.model.HealthInfo
 import com.pocketcli.core.model.Transport
 import com.pocketcli.core.security.SecretStore
-import com.pocketcli.data.local.db.ConnectionProfileDao
 import com.pocketcli.data.local.db.ConnectionProfileEntity
+import com.pocketcli.data.local.db.ProfileDao
 import com.pocketcli.runtime.local.installer.RuntimeInstaller
 import com.pocketcli.runtime.local.proot.ProotEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
@@ -39,7 +39,7 @@ import javax.inject.Singleton
 class LocalRuntimeSupervisor(
     private val prootEnvironment: ProotEnvironment,
     private val runtimeInstaller: RuntimeInstaller,
-    private val connectionProfileDao: ConnectionProfileDao,
+    private val profileDao: ProfileDao,
     private val secretStore: SecretStore,
     val logBuffer: CircularLogBuffer,
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
@@ -59,13 +59,13 @@ class LocalRuntimeSupervisor(
     constructor(
         prootEnvironment: ProotEnvironment,
         runtimeInstaller: RuntimeInstaller,
-        connectionProfileDao: ConnectionProfileDao,
+        profileDao: ProfileDao,
         secretStore: SecretStore,
         logBuffer: CircularLogBuffer
     ) : this(
         prootEnvironment = prootEnvironment,
         runtimeInstaller = runtimeInstaller,
-        connectionProfileDao = connectionProfileDao,
+        profileDao = profileDao,
         secretStore = secretStore,
         logBuffer = logBuffer,
         okHttpClient = OkHttpClient.Builder().build(),
@@ -265,7 +265,7 @@ class LocalRuntimeSupervisor(
                 allowCleartextHttp = true,
                 lastConnectedAt = System.currentTimeMillis()
             )
-            connectionProfileDao.upsert(profile)
+            profileDao.upsert(profile)
 
             val pid = runCatching { process.pid() }.getOrNull()
             _state.value = LocalRuntimeState.Running(

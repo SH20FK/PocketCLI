@@ -1,8 +1,8 @@
 package com.pocketcli.runtime.local
 
 import com.pocketcli.core.security.SecretStore
-import com.pocketcli.data.local.db.ConnectionProfileDao
 import com.pocketcli.data.local.db.ConnectionProfileEntity
+import com.pocketcli.data.local.db.ProfileDao
 import com.pocketcli.runtime.local.installer.RuntimeInstaller
 import com.pocketcli.runtime.local.manifest.ManifestParser
 import com.pocketcli.runtime.local.proot.ProotEnvironment
@@ -44,7 +44,7 @@ class LocalRuntimeSupervisorTest {
     private lateinit var rootfsDir: File
     private lateinit var prootEnv: ProotEnvironment
     private lateinit var runtimeInstaller: RuntimeInstaller
-    private lateinit var fakeProfileDao: FakeConnectionProfileDao
+    private lateinit var fakeProfileDao: FakeProfileDao
     private lateinit var fakeSecretStore: FakeSecretStore
     private lateinit var logBuffer: CircularLogBuffer
     private lateinit var mockWebServer: MockWebServer
@@ -81,7 +81,7 @@ class LocalRuntimeSupervisorTest {
             manifestContentProvider = { "{}" }
         )
 
-        fakeProfileDao = FakeConnectionProfileDao()
+        fakeProfileDao = FakeProfileDao()
         fakeSecretStore = FakeSecretStore()
         logBuffer = CircularLogBuffer(capacity = 50)
         mockWebServer = MockWebServer()
@@ -180,7 +180,7 @@ class LocalRuntimeSupervisorTest {
         return LocalRuntimeSupervisor(
             prootEnvironment = prootEnv,
             runtimeInstaller = runtimeInstaller,
-            connectionProfileDao = fakeProfileDao,
+            profileDao = fakeProfileDao,
             secretStore = fakeSecretStore,
             logBuffer = logBuffer,
             okHttpClient = OkHttpClient.Builder().build(),
@@ -193,7 +193,7 @@ class LocalRuntimeSupervisorTest {
         )
     }
 
-    private class FakeConnectionProfileDao : ConnectionProfileDao {
+    private class FakeProfileDao : ProfileDao {
         private val map = mutableMapOf<String, ConnectionProfileEntity>()
         private val flow = MutableStateFlow<List<ConnectionProfileEntity>>(emptyList())
 
@@ -210,7 +210,7 @@ class LocalRuntimeSupervisorTest {
 
         override suspend fun getById(id: String): ConnectionProfileEntity? = map[id]
 
-        override suspend fun delete(id: String) {
+        override suspend fun deleteById(id: String) {
             map.remove(id)
             flow.value = map.values.toList()
         }
