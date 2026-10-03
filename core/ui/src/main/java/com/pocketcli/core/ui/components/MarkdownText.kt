@@ -69,19 +69,10 @@ fun StreamingMarkdownText(
         MarkdownSanitizer.normalizeForStreaming(throttledContent)
     }
 
-    try {
-        Markdown(
-            content = normalized,
-            modifier = modifier.fillMaxWidth()
-        )
-    } catch (_: Throwable) {
-        Text(
-            text = normalized,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = modifier.fillMaxWidth()
-        )
-    }
+    Markdown(
+        content = normalized,
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 @Composable
