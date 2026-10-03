@@ -21,7 +21,7 @@ import com.pocketcli.core.ui.components.AgentActivityState
 import com.pocketcli.core.ui.components.PocketAppBarWithSearch
 import com.pocketcli.core.ui.components.PocketDialog
 import com.pocketcli.core.ui.components.PocketStatusPill
-import com.pocketcli.feature.projects.ProjectPickerSheet
+import com.pocketcli.core.ui.components.ProjectPickerSheet
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -313,7 +313,7 @@ fun SessionsScreen(
             ProjectPickerSheet(
                 workspaces = uiState.workspacesWithDetails,
                 selectedWorkspaceId = uiState.selectedWorkspaceId,
-                onSelectWorkspace = { wsId -> viewModel.selectWorkspace(wsId) },
+                onSelectWorkspace = { wsId: String? -> viewModel.selectWorkspace(wsId) },
                 onAddNewProject = { viewModel.dismissProjectPicker() },
                 onDismiss = { viewModel.dismissProjectPicker() }
             )

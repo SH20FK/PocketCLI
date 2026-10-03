@@ -82,6 +82,19 @@ class AgentSessionRepository @Inject constructor(
         database.sessionDao().delete(profileId, sessionId)
     }
 
+    suspend fun getSession(profileId: String, sessionId: String): Session? {
+        return database.sessionDao().getSession(profileId, sessionId)?.let {
+            Session(
+                id = it.sessionId,
+                profileId = it.profileId,
+                title = it.title,
+                updatedAt = it.updatedAt,
+                createdAt = it.createdAt,
+                workspaceId = it.workspaceId
+            )
+        }
+    }
+
     suspend fun getProfileIdForSession(sessionId: String): String? {
         return database.sessionDao().getSessionBySessionId(sessionId)?.profileId
     }

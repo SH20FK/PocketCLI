@@ -43,3 +43,15 @@ fun StreamingMarkdownText(
         modifier = modifier.fillMaxWidth()
     )
 }
+
+@Composable
+fun MarkdownText(
+    markdown: String,
+    modifier: Modifier = Modifier
+) {
+    StreamingMarkdownText(
+        markdown = markdown,
+        modifier = modifier
+    )
+}
+

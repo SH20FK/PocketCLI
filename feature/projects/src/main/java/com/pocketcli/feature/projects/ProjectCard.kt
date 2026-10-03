@@ -162,7 +162,8 @@ fun ProjectCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (git.isGitRepo && !git.branch.isNullOrBlank()) {
+                val branch = git.branch
+                if (git.isGitRepo && !branch.isNullOrBlank()) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -180,7 +181,7 @@ fun ProjectCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = git.branch,
+                                text = branch,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
