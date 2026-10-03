@@ -50,6 +50,9 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -60,6 +63,7 @@ dependencies {
     implementation(project(":data:local"))
     implementation(project(":data:opencode"))
     implementation(project(":runtime:remote"))
+    implementation(project(":runtime:local"))
     implementation(project(":feature:sessions"))
     implementation(project(":feature:chat"))
     implementation(project(":feature:settings"))

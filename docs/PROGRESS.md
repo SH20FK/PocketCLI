@@ -23,9 +23,38 @@
 - [x] Реализация `:feature:settings` (`SettingsScreen`, управление профилями серверов с кнопкой «Проверить подключение» и переключателем Cleartext HTTP).
 - [x] Реализация `:app` (`PocketCliApp` с Notification Channels, `MainActivity` с `NavigationSuiteScaffold` и адаптивной навигацией).
 
-## Проверенные устройства и среды:
-- Windows 11 (Host machine, OpenCode serve 1.2.27).
-- GitHub Actions Ubuntu Latest (CI/CD pipeline).
-  - **Run #10**: [SH20FK/PocketCLI Actions Run 37099966772](https://github.com/SH20FK/PocketCLI/actions/runs/37099966772) — **STATUS: SUCCESS** (Unit Tests & APK Assemble passed).
-  - **Artifact 1**: pocketcli-debug-apk (15.9 MB, SHA256: 46281a899e7d8bc87cd09067ffa05c292a0d3d28558b2c51673b6fc2e5394ebe).
-  - **Artifact 2**: test-reports (7.26 KB, SHA256: 277b8c25491b07a33ca9316468753eeb9585098cd799eb12a07e9a6ea5ee7cb5).
+## Этап 2 — Автономный локальный рантайм на телефоне (В процессе)
+
+### Веха 1: Выделение `:data:local` (Завершена)
+- [x] Создан выделенный модуль `:data:local`.
+- [x] Перенесена и обновлена база данных Room до v2 (`AppDatabase`, `WorkspaceEntity`, `SessionEntity`, `MessageEntity`, `ToolCallEntity`, `DbSanitizer`).
+- [x] Реализован `WorkspaceRepository` и `WorkspaceStorage`.
+- [x] Написаны юнит-тесты `DbSanitizerTest`, `WorkspaceRepositoryTest`.
+- [x] Пройдена верификация CI на GitHub Actions.
+
+### Веха 2: Модуль «Проекты» (`:feature:projects`) (Завершена)
+- [x] Создан модуль `:feature:projects`.
+- [x] Реализован `ProjectsViewModel` (реактивное управление воркспейсами, архивация, создание, клонирование).
+- [x] Реализован экран `ProjectsScreen` со списком карточек `ProjectCard` (Git ветка, dirty/clean статус, счетчик сессий, тип источника).
+- [x] Реализован `CloneBottomSheet` (валидация URL, авто-детекция имени проекта, shallow clone `--depth 1`, шифрование PAT токена в Keystore через `SecretStore`).
+- [x] Реализован диалог `CreateProjectDialog` с опцией инициализации `README.md`.
+- [x] Интеграция Project Picker в `CreateSessionDialog` в `:feature:sessions`.
+- [x] Поддержка query-параметра `directory` в OpenCode API (`/session?directory=...`).
+- [x] Добавлена вкладка Projects в `NavigationSuiteScaffold` (`MainActivity.kt`).
+- [x] Написаны юнит-тесты `ProjectsViewModelTest`.
+- [x] Пройдена верификация CI на GitHub Actions.
+
+### Веха 3: Подготовка PRoot и спайка (`:runtime:local`) (Завершена)
+- [x] Скомпилированные бинарники `libproot.so` и `libproot-loader.so` интегрированы в `app/src/main/jniLibs/arm64-v8a/` и `jniLibs/x86_64/` (обход W^X noexec на Android 10+).
+- [x] Настроены `useLegacyPackaging = true` и `android:extractNativeLibs="true"` в `app/build.gradle.kts` и `AndroidManifest.xml`.
+- [x] Создан манифест рантайма `assets/local-runtime-manifest.json` с проверенными контрольными суммами SHA-256 (Alpine 3.21.3 minirootfs ~3.5-3.8MB, OpenCode musl binary 1.2.27 ~44.4MB).
+- [x] Создан модуль `:runtime:local`.
+- [x] Реализован `ManifestParser` с валидацией схемы и контрольных сумм.
+- [x] Реализованы `ProotEnvironment` и `ProotSpikeRunner`.
+- [x] Написаны юнит-тесты `ManifestParserTest`, `ProotEnvironmentTest`.
+
+## Проверенные сборки и CI:
+- GitHub Actions Ubuntu Latest (CI/CD pipeline):
+  - **Run 37099966772** (Этап 1 MVP) — SUCCESS
+  - **Run 37105396455** (Веха 1 :data:local) — SUCCESS
+  - **Run 37106640268** (Веха 2 :feature:projects) — SUCCESS
