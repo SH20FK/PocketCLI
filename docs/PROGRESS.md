@@ -133,3 +133,4 @@
   - **Run 37111805723** (Веха 5 Supervisor & Service) — SUCCESS
   - **Run 37112584531** (Веха 6 Onboarding & Settings UI) — SUCCESS
   - **Run 37120626978** (Этап 3 Полный UI/UX Flow, Material 3 Expressive и OTA Обновления) — SUCCESS (Артефакт `pocketcli-debug-apk` собран, все тесты пройдены)
+  - **Run 37121178933** (Релизный тег `v1.0.0-beta.1`) — SUCCESS (Сформирован официальный GitHub Release [v1.0.0-beta.1](https://github.com/SH20FK/PocketCLI/releases/tag/v1.0.0-beta.1), опубликованы APK `pocketcli-1.0.0-beta.1-universal.apk`, `SHA256SUMS` и манифест `update.json`).
