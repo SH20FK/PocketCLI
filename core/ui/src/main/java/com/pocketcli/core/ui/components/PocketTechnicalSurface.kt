@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -20,13 +20,6 @@ import com.pocketcli.core.ui.theme.PocketCLITheme
 import com.pocketcli.core.ui.theme.PocketShapes
 import com.pocketcli.core.ui.theme.PocketSpacing
 
-/**
- * PocketTechnicalSurface - strict technical surface for code, diff, terminal, and logs.
- * Features:
- * - 10dp technical shape (PocketShapes.technical)
- * - Header row for metadata, language tag, and actions
- * - Content area with code theme colors and monospace support
- */
 @Composable
 fun PocketTechnicalSurface(
     modifier: Modifier = Modifier,
@@ -44,7 +37,6 @@ fun PocketTechnicalSurface(
         tonalElevation = 1.dp
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header bar
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -59,9 +51,8 @@ fun PocketTechnicalSurface(
                 )
             }
 
-            HorizontalDivider(color = codeScheme.gutter.copy(alpha = 0.5f))
+            HorizontalDivider(color = codeScheme.lineNumber.copy(alpha = 0.5f))
 
-            // Body content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -72,7 +63,7 @@ fun PocketTechnicalSurface(
     }
 }
 
-@Preview(name = PocketTechnicalSurface Light)
+@Preview(name = "PocketTechnicalSurface Light")
 @Composable
 fun PocketTechnicalSurfaceLightPreview() {
     PocketCLITheme(darkTheme = false) {
@@ -81,14 +72,14 @@ fun PocketTechnicalSurfaceLightPreview() {
                 modifier = Modifier.padding(16.dp),
                 header = {
                     Text(
-                        text = MainActivity.kt,
+                        text = "MainActivity.kt",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     IconButton(onClick = {}, modifier = Modifier.size(24.dp)) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
-                            contentDescription = Copy,
+                            contentDescription = "Copy",
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -96,11 +87,11 @@ fun PocketTechnicalSurfaceLightPreview() {
                 content = {
                     val scroll = rememberScrollState()
                     Text(
-                        text = fun main() {\n println("Hello, PocketCLI!")\n},
+                        text = "fun main() { println(\"Hello, PocketCLI!\") }",
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
-                        color = LocalPocketCodeScheme.current.text,
+                        color = LocalPocketCodeScheme.current.onBackground,
                         modifier = Modifier.horizontalScroll(scroll)
                     )
                 }
@@ -109,7 +100,7 @@ fun PocketTechnicalSurfaceLightPreview() {
     }
 }
 
-@Preview(name = PocketTechnicalSurface Dark)
+@Preview(name = "PocketTechnicalSurface Dark")
 @Composable
 fun PocketTechnicalSurfaceDarkPreview() {
     PocketCLITheme(darkTheme = true) {
@@ -118,18 +109,18 @@ fun PocketTechnicalSurfaceDarkPreview() {
                 modifier = Modifier.padding(16.dp),
                 header = {
                     Text(
-                        text = terminal - opencode serve,
+                        text = "terminal - opencode serve",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
                 content = {
                     Text(
-                        text = [Supervisor] Listening on 127.0.0.1:4096\n[Info] Ready for connections,
+                        text = "[Supervisor] Listening on 127.0.0.1:4096",
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
-                        color = LocalPocketCodeScheme.current.text
+                        color = LocalPocketCodeScheme.current.onBackground
                     )
                 }
             )

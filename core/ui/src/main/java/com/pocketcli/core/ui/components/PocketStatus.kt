@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,10 +21,14 @@ import com.pocketcli.core.ui.theme.SemanticSuccess
 import com.pocketcli.core.ui.theme.SemanticWarning
 
 enum class PocketStatusState(val label: String) {
+    IDLE("Готов"),
     READY("Готов"),
     THINKING("Думает"),
+    RUNNING("Выполняет"),
     EXECUTING("Выполняет"),
+    WAITING_PERMISSION("Ждёт подтверждения"),
     AWAITING_PERMISSION("Ждёт подтверждения"),
+    ERROR("Ошибка"),
     OFFLINE("Офлайн")
 }
 
@@ -40,10 +45,11 @@ fun PocketStatus(
 ) {
     val text = customLabel ?: state.label
     val (color, icon) = when (state) {
-        PocketStatusState.READY -> Pair(SemanticSuccess, Icons.Default.CheckCircle)
+        PocketStatusState.IDLE, PocketStatusState.READY -> Pair(SemanticSuccess, Icons.Default.CheckCircle)
         PocketStatusState.THINKING -> Pair(MaterialTheme.colorScheme.primary, Icons.Default.Psychology)
-        PocketStatusState.EXECUTING -> Pair(MaterialTheme.colorScheme.tertiary, Icons.Default.Terminal)
-        PocketStatusState.AWAITING_PERMISSION -> Pair(SemanticWarning, Icons.Default.Security)
+        PocketStatusState.RUNNING, PocketStatusState.EXECUTING -> Pair(MaterialTheme.colorScheme.tertiary, Icons.Default.Terminal)
+        PocketStatusState.WAITING_PERMISSION, PocketStatusState.AWAITING_PERMISSION -> Pair(SemanticWarning, Icons.Default.Security)
+        PocketStatusState.ERROR -> Pair(MaterialTheme.colorScheme.error, Icons.Default.ErrorOutline)
         PocketStatusState.OFFLINE -> Pair(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), Icons.Default.CloudOff)
     }
 
