@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -31,37 +31,37 @@ fun StreamingTail(
     modifier: Modifier = Modifier
 ) {
     val phaseDescription = when (tail.phase) {
-        AgentPhase.THINKING -> Думает...
-        AgentPhase.STREAMING_TEXT -> Пишет...
-        AgentPhase.EXECUTING_TOOL -> tail.currentTool?.let { Выполняет:  } ?: Выполняет действие...
-        AgentPhase.AWAITING_PERMISSION -> Ожидает подтверждения...
-        AgentPhase.COMPLETED -> Готово
-        AgentPhase.ERROR -> Ошибка
-        AgentPhase.IDLE -> "
- }
+        AgentPhase.THINKING -> "Думает..."
+        AgentPhase.STREAMING_TEXT -> "Пишет..."
+        AgentPhase.EXECUTING_TOOL -> tail.currentTool?.let { "Выполняет: ${it.name}" } ?: "Выполняет действие..."
+        AgentPhase.AWAITING_PERMISSION -> "Ожидает подтверждения..."
+        AgentPhase.COMPLETED -> "Готово"
+        AgentPhase.ERROR -> "Ошибка"
+        AgentPhase.IDLE -> ""
+    }
 
- if (tail.phase == AgentPhase.IDLE || tail.phase == AgentPhase.COMPLETED) return
+    if (tail.phase == AgentPhase.IDLE || tail.phase == AgentPhase.COMPLETED) return
 
- val infiniteTransition = rememberInfiniteTransition(label = StreamingTailTransition)
- val alpha by infiniteTransition.animateFloat(
- initialValue = 0.35f,
- targetValue = 1f,
- animationSpec = infiniteRepeatable(
- animation = tween(650, easing = FastOutSlowInEasing),
- repeatMode = RepeatMode.Reverse
- ),
- label = LivingAlpha
- )
+    val infiniteTransition = rememberInfiniteTransition(label = "StreamingTailTransition")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "LivingAlpha"
+    )
 
- Row(
- verticalAlignment = Alignment.CenterVertically,
- modifier = modifier
- .fillMaxWidth()
- .padding(vertical = PocketSpacing.xs)
- .semantics {
- contentDescription = Агент 
- }
- ) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = PocketSpacing.xs)
+            .semantics {
+                contentDescription = "Агент $phaseDescription"
+            }
+    ) {
  Box(
  modifier = Modifier
  .size(8.dp)

@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -54,7 +54,7 @@ fun PocketAsyncButton(
             is AsyncActionState.Error -> MaterialTheme.colorScheme.error
         },
         animationSpec = motion.standard,
-        label = AsyncButtonContainerColor
+        label = "AsyncButtonContainerColor"
     )
 
     val contentColor by animateColorAsState(
@@ -64,7 +64,7 @@ fun PocketAsyncButton(
             is AsyncActionState.Error -> MaterialTheme.colorScheme.onError
         },
         animationSpec = motion.standard,
-        label = AsyncButtonContentColor
+        label = "AsyncButtonContentColor"
     )
 
     Button(
@@ -87,7 +87,7 @@ fun PocketAsyncButton(
             transitionSpec = {
                 fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120))
             },
-            label = AsyncButtonContent
+            label = "AsyncButtonContent"
         ) { targetState ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -142,7 +142,7 @@ fun PocketAsyncButton(
     }
 }
 
-@Preview(name = AsyncButton States Light)
+@Preview(name = "AsyncButton States Light")
 @Composable
 fun PocketAsyncButtonPreview() {
     PocketCLITheme(darkTheme = false) {
@@ -154,30 +154,30 @@ fun PocketAsyncButtonPreview() {
                 PocketAsyncButton(
                     state = AsyncActionState.Idle,
                     onClick = {},
-                    label = Установить окружение,
-                    successLabel = Установлено,
-                    errorLabel = Ошибка
+                    label = "Установить окружение",
+                    successLabel = "Установлено",
+                    errorLabel = "Ошибка"
                 )
                 PocketAsyncButton(
                     state = AsyncActionState.Loading,
                     onClick = {},
-                    label = Установка...,
-                    successLabel = Установлено,
-                    errorLabel = Ошибка
+                    label = "Установка...",
+                    successLabel = "Установлено",
+                    errorLabel = "Ошибка"
                 )
                 PocketAsyncButton(
                     state = AsyncActionState.Success,
                     onClick = {},
-                    label = Установить окружение,
-                    successLabel = Готово к работе,
-                    errorLabel = Ошибка
+                    label = "Установить окружение",
+                    successLabel = "Готово к работе",
+                    errorLabel = "Ошибка"
                 )
                 PocketAsyncButton(
-                    state = AsyncActionState.Error(Сбой сети),
+                    state = AsyncActionState.Error("Сбой сети"),
                     onClick = {},
-                    label = Повторить,
-                    successLabel = Готово,
-                    errorLabel = Ошибка сети
+                    label = "Повторить",
+                    successLabel = "Готово",
+                    errorLabel = "Ошибка сети"
                 )
             }
         }

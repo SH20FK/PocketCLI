@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.projects
+package com.pocketcli.feature.projects
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,7 +53,7 @@ fun ProjectCard(
     val git = item.gitStatus
     var showMenu by remember { mutableStateOf(false) }
 
-    val dateFormat = remember { SimpleDateFormat(d MMM, HH:mm, Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()) }
     val formattedTime = remember(workspace.lastOpenedAt) { dateFormat.format(Date(workspace.lastOpenedAt)) }
 
     Card(
@@ -120,7 +120,7 @@ fun ProjectCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = Опции
+                            contentDescription = "Опции"
                         )
                     }
                     DropdownMenu(
@@ -128,7 +128,7 @@ fun ProjectCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text(if (workspace.archived) Восстановить else В архив) },
+                            text = { Text(if (workspace.archived) "Восстановить" else "В архив") },
                             leadingIcon = {
                                 Icon(
                                     imageVector = if (workspace.archived) Icons.Default.Unarchive else Icons.Default.Archive,
@@ -141,7 +141,7 @@ fun ProjectCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(Удалить проект) },
+                            text = { Text("Удалить проект") },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
@@ -162,20 +162,20 @@ fun ProjectCard(
 
             // Tier 2: Path & Branch / Changes (e.g. main · 3 изменения)
             val branchText = git.branch.takeIf { !it.isNullOrBlank() }
-            val dirtyText = if (git.isDirty) изменения else чисто
+            val dirtyText = if (git.isDirty) "изменения" else "чисто"
             val tier2Text = buildString {
                 if (branchText != null) {
                     append(branchText)
-                    append( · )
+                    append(" · ")
                 }
                 val subPath = if (!workspace.remoteUrl.isNullOrBlank()) {
                     workspace.remoteUrl
                 } else {
-                    workspace.localPath.substringAfterLast(/)
+                    workspace.localPath.substringAfterLast('/')
                 }
                 append(subPath)
                 if (git.isGitRepo) {
-                    append( · )
+                    append(" · ")
                     append(dirtyText)
                 }
             }
@@ -205,12 +205,12 @@ fun ProjectCard(
             Spacer(modifier = Modifier.height(PocketSpacing.xs))
 
             // Tier 3: Status summary + last activity (e.g. Локальный runtime · 2 активные сессии · 5 мин)
-            val runtimeText = if (workspace.sourceType == WorkspaceSourceType.CLONED) Git else Локальный runtime
-            val sessionText = if (item.sessionCount > 0)  сессий else нет сессий
+            val runtimeText = if (workspace.sourceType == WorkspaceSourceType.CLONED) "Git" else "Локальный runtime"
+            val sessionText = if (item.sessionCount > 0) "${item.sessionCount} сессий" else "нет сессий"
             val tier3Text = if (isActive && !activeActionText.isNullOrBlank()) {
-                 · 
+                "$runtimeText · $activeActionText"
             } else {
-                 · · 
+                "$runtimeText · $sessionText · $formattedTime"
             }
 
             Row(
@@ -246,7 +246,7 @@ fun ProjectCard(
                         onClick = onClick,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text(Открыть)
+                        Text("Открыть")
                     }
                 }
             }
@@ -254,7 +254,7 @@ fun ProjectCard(
     }
 }
 
-@Preview(name = ProjectCard Light)
+@Preview(name = "ProjectCard Light")
 @Composable
 fun ProjectCardPreview() {
     PocketCLITheme(darkTheme = false) {
@@ -262,13 +262,14 @@ fun ProjectCardPreview() {
             ProjectCard(
                 item = WorkspaceWithDetails(
                     workspace = Workspace(
-                        id = 1,
-                        displayName = pocketcli-android,
-                        localPath = /workspace/pocketcli,
-                        sourceType = WorkspaceSourceType.LOCAL,
+                        id = "1",
+                        profileId = "default",
+                        displayName = "pocketcli-android",
+                        localPath = "/workspace/pocketcli",
+                        sourceType = WorkspaceSourceType.CREATED,
                         lastOpenedAt = System.currentTimeMillis()
                     ),
-                    gitStatus = GitStatus(isGitRepo = true, branch = main, isDirty = true),
+                    gitStatus = GitStatus(isGitRepo = true, branch = "main", isDirty = true),
                     sessionCount = 3
                 ),
                 onClick = {},

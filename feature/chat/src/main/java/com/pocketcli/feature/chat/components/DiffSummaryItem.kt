@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -63,12 +63,12 @@ fun DiffSummaryItem(
                     Spacer(modifier = Modifier.width(PocketSpacing.xs))
                     val summaryText = buildString {
                         if (fileCount > 1) {
-                            append( файла · )
+                            append("$fileCount файла · ")
                         }
                         if (additions > 0 || deletions > 0) {
-                            append(+ −)
+                            append("+$additions −$deletions")
                         } else {
-                            append(Изменения в коде)
+                            append("Изменения в коде")
                         }
                     }
                     Text(
@@ -83,7 +83,7 @@ fun DiffSummaryItem(
                     shape = PocketShapes.action,
                     modifier = Modifier.heightIn(min = 48.dp)
                 ) {
-                    Text(Открыть diff)
+                    Text("Открыть diff")
                 }
             }
 

@@ -32,10 +32,10 @@ class ChatViewModel @Inject constructor(
                 ?: connectionManager.activeProfile.value?.id
                 ?: repository.getProfileIdForSession(sessionId)
                 ?: connectionManager.getActiveProfileId()
-                ?: "
+                ?: ""
 
  val session = repository.getSession(resolvedProfileId, sessionId)
- val title = session?.title?.ifBlank { Чат сессии } ?: Чат сессии
+ val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
 
  _uiState.update { current ->
  val nextState = current.copy(
@@ -232,7 +232,7 @@ class ChatViewModel @Inject constructor(
  _uiState.update { current ->
  val nextState = current.copy(
  sessionState = SessionState.IDLE,
- errorMessage = Нет активного подключения. Проверьте настройки.
+ errorMessage = "Нет активного подключения. Проверьте настройки."
  )
  syncNodesAndComposer(nextState)
  }
@@ -245,7 +245,7 @@ class ChatViewModel @Inject constructor(
  _uiState.update { current ->
  val nextState = current.copy(
  sessionState = SessionState.IDLE,
- errorMessage = Не удалось отправить сообщение: 
+ errorMessage = "Не удалось отправить сообщение: ${err.message}"
  )
  syncNodesAndComposer(nextState)
  }

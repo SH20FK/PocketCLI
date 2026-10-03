@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -28,16 +28,16 @@ import com.pocketcli.core.ui.theme.PocketSpacing
 
 /**
  * AssistantMessage according to section 4.2:
- * - No bubble, occupies full available width
- * - Body: bodyLarge (16sp/24sp)
- * - Reasoning: single row Думал X с with chevron, expands without nested card-in-card
- * - Actions row (copy) accessible when not streaming or on tap
+ * - Full width (no bubble)
+ * - Primary body: bodyLarge
+ * - Reasoning: single row "Рассуждения агента" with expand/collapse chevron
+ * - Actions row (copy) shown only on hover/tap or after stream finishes
  */
 @Composable
 fun AssistantMessage(
     message: Message,
-    isStreaming: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isStreaming: Boolean = false
 ) {
     val clipboardManager = LocalClipboardManager.current
     var isReasoningExpanded by remember { mutableStateOf(false) }
@@ -47,7 +47,7 @@ fun AssistantMessage(
             .fillMaxWidth()
             .padding(vertical = PocketSpacing.xs)
     ) {
-        // Reasoning row if reasoning is present
+        // Reasoning section (if available)
         if (!message.reasoning.isNullOrBlank()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -64,14 +64,14 @@ fun AssistantMessage(
                 )
                 Spacer(modifier = Modifier.width(PocketSpacing.xs))
                 Text(
-                    text = Рассуждения агента,
+                    text = "Рассуждения агента",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
                     imageVector = if (isReasoningExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isReasoningExpanded) Свернуть else Развернуть,
+                    contentDescription = if (isReasoningExpanded) "Свернуть" else "Развернуть",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
@@ -124,7 +124,7 @@ fun AssistantMessage(
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
-                        contentDescription = Скопировать ответ,
+                        contentDescription = "Скопировать ответ",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -134,18 +134,18 @@ fun AssistantMessage(
     }
 }
 
-@Preview(name = AssistantMessage Light)
+@Preview(name = "AssistantMessage Light")
 @Composable
 fun AssistantMessagePreview() {
     PocketCLITheme(darkTheme = false) {
         Surface {
             AssistantMessage(
                 message = Message(
-                    id = msg1,
-                    sessionId = sess1,
+                    id = "msg1",
+                    sessionId = "sess1",
                     role = MessageRole.ASSISTANT,
-                    text = Тесты успешно созданы:\n\n`kotlin\n@Test\nfun testRun() {\n assertTrue(true)\n}\n`\nВсе проверки пройдены.,
-                    reasoning = Сначала проверяем архитектуру proot, затем формируем окружение LD_LIBRARY_PATH.
+                    text = "Тесты успешно созданы:\n\n```kotlin\n@Test\nfun testRun() {\n    assertTrue(true)\n}\n```\nВсе проверки пройдены.",
+                    reasoning = "Сначала проверяем архитектуру proot, затем формируем окружение LD_LIBRARY_PATH."
                 ),
                 modifier = Modifier.padding(16.dp)
             )

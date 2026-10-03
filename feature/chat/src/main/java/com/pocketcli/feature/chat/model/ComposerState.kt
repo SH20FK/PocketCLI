@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.model
+package com.pocketcli.feature.chat.model
 
 import androidx.compose.runtime.Immutable
 
@@ -14,7 +14,7 @@ sealed interface ComposerMode {
 
 @Immutable
 data class ComposerState(
-    val text: String = ",
+    val text: String = "",
  val attachments: List<String> = emptyList(),
  val mode: ComposerMode = ComposerMode.Empty,
  val selectedModelName: String? = null,

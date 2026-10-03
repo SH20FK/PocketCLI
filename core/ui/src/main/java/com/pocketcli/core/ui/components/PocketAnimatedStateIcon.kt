@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -46,7 +46,7 @@ fun PocketAnimatedStateIcon(
         transitionSpec = {
             fadeIn(animationSpec = tween(duration)) togetherWith fadeOut(animationSpec = tween(duration))
         },
-        label = PocketAnimatedStateIcon
+        label = "PocketAnimatedStateIcon"
     ) { glyph ->
         val icon: ImageVector = when (glyph) {
             StateGlyph.IDLE -> Icons.Default.Circle

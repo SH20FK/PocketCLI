@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -94,7 +94,7 @@ fun ActiveSessionBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Stop,
-                                contentDescription = Остановить сессию,
+                                contentDescription = "Остановить сессию",
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -105,11 +105,95 @@ fun ActiveSessionBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.OpenInNew,
-                                contentDescription = Открыть чат,
+                                contentDescription = "Открыть чат",
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Overload of ActiveSessionBar supporting direct string parameters for scaffolds and previews.
+ */
+@Composable
+fun ActiveSessionBar(
+    projectTitle: String,
+    currentAction: String,
+    elapsedTime: String = "",
+    onClick: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = PocketShapes.container,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 2.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = PocketSpacing.xs, vertical = PocketSpacing.xxs)
+            .clip(PocketShapes.container)
+            .clickable { onClick() }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(horizontal = PocketSpacing.sm, vertical = PocketSpacing.xs)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                PocketStatus(state = PocketStatusState.RUNNING, compact = true)
+                Spacer(modifier = Modifier.width(PocketSpacing.xs))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = projectTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (elapsedTime.isNotBlank()) "$currentAction · $elapsedTime" else currentAction,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(PocketSpacing.xxs)
+            ) {
+                FilledTonalIconButton(
+                    onClick = onStop,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Остановить сессию",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onClick,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.OpenInNew,
+                        contentDescription = "Открыть чат",
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

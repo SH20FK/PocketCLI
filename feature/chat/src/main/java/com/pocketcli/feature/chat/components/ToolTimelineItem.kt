@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -46,18 +46,18 @@ fun ToolTimelineItem(
     }
 
     val icon: ImageVector = when {
-        toolCall.name.contains(terminal, ignoreCase = true) || toolCall.name.contains(bash, ignoreCase = true) || toolCall.name.contains(exec, ignoreCase = true) -> Icons.Default.Terminal
-        toolCall.name.contains(read, ignoreCase = true) || toolCall.name.contains(view, ignoreCase = true) -> Icons.Default.Visibility
-        toolCall.name.contains(edit, ignoreCase = true) || toolCall.name.contains(write, ignoreCase = true) -> Icons.Default.EditNote
-        toolCall.name.contains(search, ignoreCase = true) || toolCall.name.contains(grep, ignoreCase = true) || toolCall.name.contains(find, ignoreCase = true) -> Icons.Default.Search
+        toolCall.name.contains("terminal", ignoreCase = true) || toolCall.name.contains("bash", ignoreCase = true) || toolCall.name.contains("exec", ignoreCase = true) -> Icons.Default.Terminal
+        toolCall.name.contains("read", ignoreCase = true) || toolCall.name.contains("view", ignoreCase = true) -> Icons.Default.Visibility
+        toolCall.name.contains("edit", ignoreCase = true) || toolCall.name.contains("write", ignoreCase = true) -> Icons.Default.EditNote
+        toolCall.name.contains("search", ignoreCase = true) || toolCall.name.contains("grep", ignoreCase = true) || toolCall.name.contains("find", ignoreCase = true) -> Icons.Default.Search
         else -> Icons.Default.Build
     }
 
     val friendlyName = when {
-        toolCall.name.contains(terminal, ignoreCase = true) || toolCall.name.contains(bash, ignoreCase = true) -> Команда терминала
-        toolCall.name.contains(read, ignoreCase = true) || toolCall.name.contains(view, ignoreCase = true) -> Чтение файла
-        toolCall.name.contains(edit, ignoreCase = true) || toolCall.name.contains(write, ignoreCase = true) -> Изменение файла
-        toolCall.name.contains(grep, ignoreCase = true) || toolCall.name.contains(search, ignoreCase = true) -> Поиск по коду
+        toolCall.name.contains("terminal", ignoreCase = true) || toolCall.name.contains("bash", ignoreCase = true) -> "Команда терминала"
+        toolCall.name.contains("read", ignoreCase = true) || toolCall.name.contains("view", ignoreCase = true) -> "Чтение файла"
+        toolCall.name.contains("edit", ignoreCase = true) || toolCall.name.contains("write", ignoreCase = true) -> "Изменение файла"
+        toolCall.name.contains("grep", ignoreCase = true) || toolCall.name.contains("search", ignoreCase = true) -> "Поиск по коду"
         else -> toolCall.name
     }
 
@@ -93,62 +93,62 @@ fun ToolTimelineItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                val summary = toolCall.inputJson?.take(60)?.replace(\n,  ) ?: "
- if (summary.isNotBlank()) {
- Text(
- text = summary,
- style = MaterialTheme.typography.bodySmall,
- color = MaterialTheme.colorScheme.onSurfaceVariant,
- maxLines = 1,
- overflow = TextOverflow.Ellipsis
- )
- }
- }
+                val summary = toolCall.inputJson?.take(60)?.replace("\n", " ") ?: ""
+                if (summary.isNotBlank()) {
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
 
- Spacer(modifier = Modifier.width(PocketSpacing.xs))
+            Spacer(modifier = Modifier.width(PocketSpacing.xs))
 
- if (!durationText.isNullOrBlank()) {
- Text(
- text = durationText,
- style = MaterialTheme.typography.labelMedium,
- color = MaterialTheme.colorScheme.onSurfaceVariant
- )
- Spacer(modifier = Modifier.width(PocketSpacing.xs))
- }
+            if (!durationText.isNullOrBlank()) {
+                Text(
+                    text = durationText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(PocketSpacing.xs))
+            }
 
- when (toolCall.status) {
- ToolStatus.RUNNING -> {
- CircularProgressIndicator(
- strokeWidth = 2.dp,
- color = ToolRunningColor,
- modifier = Modifier.size(16.dp)
- )
- }
- ToolStatus.COMPLETED -> {
- Icon(
- imageVector = Icons.Default.Check,
- contentDescription = Успешно,
- tint = ToolSuccessColor,
- modifier = Modifier.size(18.dp)
- )
- }
- ToolStatus.ERROR -> {
- Icon(
- imageVector = Icons.Default.ErrorOutline,
- contentDescription = Ошибка,
- tint = MaterialTheme.colorScheme.error,
- modifier = Modifier.size(18.dp)
- )
- }
- ToolStatus.PENDING -> {
- Icon(
- imageVector = Icons.Default.HourglassEmpty,
- contentDescription = Ожидание,
- tint = MaterialTheme.colorScheme.onSurfaceVariant,
- modifier = Modifier.size(18.dp)
- )
- }
- }
- }
- }
+            when (toolCall.status) {
+                ToolStatus.RUNNING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        color = ToolRunningColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                ToolStatus.COMPLETED -> {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Успешно",
+                        tint = ToolSuccessColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                ToolStatus.ERROR -> {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = "Ошибка",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                ToolStatus.PENDING -> {
+                    Icon(
+                        imageVector = Icons.Default.HourglassEmpty,
+                        contentDescription = "Ожидание",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
 }

@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,7 +31,7 @@ fun UserMessage(
     timestamp: Long,
     modifier: Modifier = Modifier
 ) {
-    val timeFormatter = remember { SimpleDateFormat(HH:mm, Locale.getDefault()) }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val formattedTime = remember(timestamp) { timeFormatter.format(Date(timestamp)) }
 
     Box(
@@ -66,13 +66,13 @@ fun UserMessage(
     }
 }
 
-@Preview(name = UserMessage Light)
+@Preview(name = "UserMessage Light")
 @Composable
 fun UserMessagePreview() {
     PocketCLITheme(darkTheme = false) {
         Surface {
             UserMessage(
-                text = Напиши юнит-тесты для ProotEnvironment,
+                text = "Напиши юнит-тесты для ProotEnvironment",
                 timestamp = System.currentTimeMillis(),
                 modifier = Modifier.padding(16.dp)
             )

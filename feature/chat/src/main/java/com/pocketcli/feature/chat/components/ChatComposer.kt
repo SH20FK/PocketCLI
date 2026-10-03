@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -82,7 +82,7 @@ fun ChatComposer(
             ) {
                 if (state.text.isEmpty()) {
                     Text(
-                        text = Сообщение или / для команд...,
+                        text = "Сообщение или / для команд...",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -113,7 +113,7 @@ fun ChatComposer(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = Прикрепить файл или действие,
+                            contentDescription = "Прикрепить файл или действие",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -123,35 +123,35 @@ fun ChatComposer(
                         onDismissRequest = { showAttachMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text(Файл из проекта) },
+                            text = { Text("Файл из проекта") },
                             leadingIcon = { Icon(Icons.Default.InsertDriveFile, contentDescription = null) },
                             onClick = {
                                 showAttachMenu = false
-                                onAddAttachment(файл проекта)
+                                onAddAttachment("файл проекта")
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(Изображение) },
+                            text = { Text("Изображение") },
                             leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
                             onClick = {
                                 showAttachMenu = false
-                                onAddAttachment(изображение)
+                                onAddAttachment("изображение")
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(Снимок экрана / Камера) },
+                            text = { Text("Снимок экрана / Камера") },
                             leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
                             onClick = {
                                 showAttachMenu = false
-                                onAddAttachment(камера)
+                                onAddAttachment("камера")
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(Рабочий контекст) },
+                            text = { Text("Рабочий контекст") },
                             leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
                             onClick = {
                                 showAttachMenu = false
-                                onAddAttachment(контекст)
+                                onAddAttachment("контекст")
                             }
                         )
                     }
@@ -173,7 +173,7 @@ fun ChatComposer(
                         modifier = Modifier.padding(horizontal = PocketSpacing.sm)
                     ) {
                         Text(
-                            text = state.selectedModelName ?: Модель,
+                            text = state.selectedModelName ?: "Модель",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
@@ -182,7 +182,7 @@ fun ChatComposer(
                         Spacer(modifier = Modifier.width(PocketSpacing.xxs))
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = Выбрать модель,
+                            contentDescription = "Выбрать модель",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -201,7 +201,7 @@ fun ChatComposer(
                         transitionSpec = {
                             fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120))
                         },
-                        label = SendStopMorph
+                        label = "SendStopMorph"
                     ) { running ->
                         if (running) {
                             FilledIconButton(
@@ -213,7 +213,7 @@ fun ChatComposer(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Stop,
-                                    contentDescription = Остановить,
+                                    contentDescription = "Остановить",
                                     tint = MaterialTheme.colorScheme.onError
                                 )
                             }
@@ -229,7 +229,7 @@ fun ChatComposer(
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = Отправить,
+                                    contentDescription = "Отправить",
                                     tint = if (canSend) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                 )
                             }

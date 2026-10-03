@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.model
+package com.pocketcli.feature.chat.model
 
 import androidx.compose.runtime.Immutable
 import com.pocketcli.core.model.AgentEvent
@@ -21,7 +21,7 @@ data class ToolSummary(
     val callId: String,
     val name: String,
     val status: ToolStatus = ToolStatus.RUNNING,
-    val summary: String = "
+    val summary: String = ""
 )
 
 @Immutable

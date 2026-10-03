@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -46,7 +46,7 @@ fun ChatTopBar(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = Назад
+                    contentDescription = "Назад"
                 )
             }
         },
@@ -68,7 +68,7 @@ fun ChatTopBar(
                 ) {
                     PocketStatus(state = statusState, compact = true)
                     Text(
-                        text =  · ,
+                        text = "$projectName · $runtimeName",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -84,7 +84,7 @@ fun ChatTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Description,
-                    contentDescription = Файлы
+                    contentDescription = "Файлы"
                 )
             }
             IconButton(
@@ -93,7 +93,7 @@ fun ChatTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = Опции
+                    contentDescription = "Опции"
                 )
             }
         },

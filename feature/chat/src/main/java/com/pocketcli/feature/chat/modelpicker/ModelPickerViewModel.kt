@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.modelpicker
+package com.pocketcli.feature.chat.modelpicker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,7 +34,7 @@ class ModelPickerViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = Нет активного подключения к серверу,
+                        error = "Нет активного подключения к серверу",
                         isOfflineCached = true
                     )
                 }
@@ -49,7 +49,7 @@ class ModelPickerViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = error.localizedMessage ?: Не удалось загрузить список моделей,
+                        error = error.localizedMessage ?: "Не удалось загрузить список моделей",
                         isOfflineCached = true
                     )
                 }

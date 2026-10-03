@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -163,7 +163,7 @@ fun ChatTimeline(
                     )
                     Spacer(modifier = Modifier.width(PocketSpacing.xs))
                     Text(
-                        text = К новым сообщениям,
+                        text = "К новым сообщениям",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )

@@ -198,8 +198,9 @@ fun OverviewTab(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(text = "Состояние Git", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
+                    val branchName = git.branch ?: "не инициализирован"
                     Text(
-                        text = "Ветка: ${git.branch ?: "не инициализирован"}",
+                        text = "Ветка: $branchName",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(

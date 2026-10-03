@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -60,7 +60,7 @@ fun AttachmentStrip(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = Удалить вложение,
+                                contentDescription = "Удалить вложение",
                                 modifier = Modifier.size(16.dp)
                             )
                         }

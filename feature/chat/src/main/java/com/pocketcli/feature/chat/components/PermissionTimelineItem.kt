@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat.components
+package com.pocketcli.feature.chat.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -58,7 +58,7 @@ fun PermissionTimelineItem(
                 )
                 Spacer(modifier = Modifier.width(PocketSpacing.xs))
                 Text(
-                    text = Запрос разрешения,
+                    text = "Запрос разрешения",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
@@ -99,7 +99,7 @@ fun PermissionTimelineItem(
                         .weight(1f)
                         .heightIn(min = 48.dp)
                 ) {
-                    Text(Отклонить)
+                    Text("Отклонить")
                 }
 
                 Button(
@@ -112,7 +112,7 @@ fun PermissionTimelineItem(
                         .weight(1f)
                         .heightIn(min = 48.dp)
                 ) {
-                    Text(Разрешить)
+                    Text("Разрешить")
                 }
             }
         }

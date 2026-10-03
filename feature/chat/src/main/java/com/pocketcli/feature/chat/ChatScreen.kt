@@ -1,4 +1,4 @@
-﻿package com.pocketcli.feature.chat
+package com.pocketcli.feature.chat
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -88,7 +88,7 @@ fun ChatScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = Закрыть,
+                                        contentDescription = "Закрыть",
                                         tint = MaterialTheme.colorScheme.onErrorContainer,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -148,7 +148,7 @@ fun ChatScreen(
                 requestId = perm.requestId,
                 title = perm.title,
                 commandOrPayload = associatedToolCall?.inputJson ?: associatedToolCall?.output,
-                workingDirectory = if (uiState.workspaceName.isNotBlank() && uiState.workspaceName != Локально) uiState.workspaceName else null,
+                workingDirectory = if (uiState.workspaceName.isNotBlank() && uiState.workspaceName != "Локально") uiState.workspaceName else null,
                 onReply = { reqId, opt -> viewModel.respondPermission(reqId, opt) },
                 onDismiss = { viewModel.dismissPermissionDetails() }
             )
