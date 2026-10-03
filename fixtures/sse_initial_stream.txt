@@ -1,0 +1,2 @@
+data: {"payload":{"type":"server.connected","properties":{}}}
+

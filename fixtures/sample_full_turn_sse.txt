@@ -1,0 +1,20 @@
+data: {"payload":{"type":"server.connected","properties":{}}}
+
+data: {"payload":{"type":"session.status","properties":{"sessionID":"ses_test_123","status":{"type":"busy"}}}}
+
+data: {"payload":{"type":"message.updated","properties":{"info":{"id":"msg_ast_1","sessionID":"ses_test_123","role":"assistant","time":{"created":1791001800000}}}}}
+
+data: {"payload":{"type":"message.part.delta","properties":{"sessionID":"ses_test_123","messageID":"msg_ast_1","partID":"prt_rsn_1","field":"reasoning","delta":"Analyzing repository structure..."}}}
+
+data: {"payload":{"type":"message.part.delta","properties":{"sessionID":"ses_test_123","messageID":"msg_ast_1","partID":"prt_txt_1","field":"text","delta":"I will inspect the files."}}}
+
+data: {"payload":{"type":"message.part.updated","properties":{"part":{"id":"prt_tool_1","sessionID":"ses_test_123","messageID":"msg_ast_1","type":"tool","callID":"call_bash_1","tool":"bash","state":{"status":"running","input":{"command":"ls -la"}}}}}}
+
+data: {"payload":{"type":"permission.asked","properties":{"id":"per_req_1","sessionID":"ses_test_123","permission":"bash","patterns":["ls -la"],"always":["ls"],"tool":{"messageID":"msg_ast_1","callID":"call_bash_1"},"metadata":{}}}}
+
+data: {"payload":{"type":"message.part.updated","properties":{"part":{"id":"prt_tool_1","sessionID":"ses_test_123","messageID":"msg_ast_1","type":"tool","callID":"call_bash_1","tool":"bash","state":{"status":"completed","input":{"command":"ls -la"},"output":"README.md
+build.gradle.kts"}}}}}
+
+data: {"payload":{"type":"session.status","properties":{"sessionID":"ses_test_123","status":{"type":"idle"}}}}
+
+data: {"payload":{"type":"session.idle","properties":{"sessionID":"ses_test_123"}}}

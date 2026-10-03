@@ -1,0 +1,6 @@
+data: {"payload":{"type":"server.connected","properties":{}}}
+
+data: {"directory":"C:\\Users\\Александр\\Documents\\XuanZhi9","payload":{"type":"session.created","properties":{"info":{"id":"ses_efffa1e35ffedQowb7drhsWwNr","slug":"mighty-garden","version":"1.2.27","projectID":"5c8646e58a81383ce3ce0fa8bf565d392452f944","directory":"C:\\Users\\Александр\\Documents\\XuanZhi9","title":"SSE Capture Test","time":{"created":1791001747914,"updated":1791001747914}}}}}
+
+data: {"directory":"C:\\Users\\Александр\\Documents\\XuanZhi9","payload":{"type":"session.updated","properties":{"info":{"id":"ses_efffa1e35ffedQowb7drhsWwNr","slug":"mighty-garden","version":"1.2.27","projectID":"5c8646e58a81383ce3ce0fa8bf565d392452f944","directory":"C:\\Users\\Александр\\Documents\\XuanZhi9","title":"SSE Capture Test","time":{"created":1791001747914,"updated":1791001747914}}}}}
+

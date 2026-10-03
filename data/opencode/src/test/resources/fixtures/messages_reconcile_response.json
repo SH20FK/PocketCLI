@@ -1,0 +1,56 @@
+[
+  {
+    "info": {
+      "id": "msg_usr_1",
+      "sessionID": "ses_test_123",
+      "role": "user",
+      "time": {
+        "created": 1791001700000
+      }
+    },
+    "parts": [
+      {
+        "id": "prt_usr_txt",
+        "type": "text",
+        "text": "List project files"
+      }
+    ]
+  },
+  {
+    "info": {
+      "id": "msg_ast_1",
+      "sessionID": "ses_test_123",
+      "role": "assistant",
+      "time": {
+        "created": 1791001800000
+      }
+    },
+    "parts": [
+      {
+        "id": "prt_rsn_1",
+        "type": "reasoning",
+        "text": "Analyzing repository structure..."
+      },
+      {
+        "id": "prt_txt_1",
+        "type": "text",
+        "text": "I will inspect the files."
+      },
+      {
+        "id": "prt_tool_1",
+        "type": "tool",
+        "callID": "call_bash_1",
+        "tool": "bash",
+        "sessionID": "ses_test_123",
+        "messageID": "msg_ast_1",
+        "state": {
+          "status": "completed",
+          "input": {
+            "command": "ls -la"
+          },
+          "output": "README.md\nbuild.gradle.kts"
+        }
+      }
+    ]
+  }
+]
