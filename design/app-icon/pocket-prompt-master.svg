@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <g fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+    <path id="pocket" d="M5 8V16C5 18.2 6.8 20 9 20H15C17.2 20 19 18.2 19 16V8"/>
+    <path id="prompt" d="M8.5 10.5L11.5 13L8.5 15.5"/>
+    <path id="cursor" d="M13 15.5H16"/>
+  </g>
+</svg>

@@ -1,14 +1,12 @@
 package com.pocketcli.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +15,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pocketcli.core.ui.components.AgentActivityState
+import com.pocketcli.core.ui.components.PocketDialog
+import com.pocketcli.core.ui.components.PocketStatusPill
+import com.pocketcli.core.ui.components.PocketTwoRowsTopAppBar
 import com.pocketcli.data.local.db.ConnectionProfileEntity
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeSupervisor
 
@@ -25,6 +27,8 @@ import com.pocketcli.runtime.local.supervisor.LocalRuntimeSupervisor
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     runtimeViewModel: LocalRuntimeViewModel = hiltViewModel(),
+    onNavigateToUpdate: () -> Unit = {},
+    onNavigateToRuntimeCenter: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -44,8 +48,12 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Настройки и профили") }
+            PocketTwoRowsTopAppBar(
+                title = "Настройки",
+                subtitle = "Управление рантаймом, серверами и ключами моделей",
+                statusPill = {
+                    PocketStatusPill(state = AgentActivityState.READY, customText = "Локально")
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -58,11 +66,12 @@ fun SettingsScreen(
     ) { innerPadding ->
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Local runtime card at the top
+            // Section 1: Local PRoot Runtime
             item {
                 LocalRuntimeCard(
                     installerState = installerState,
@@ -77,13 +86,73 @@ fun SettingsScreen(
                     onOpenLogs = { runtimeViewModel.openLogsDialog() },
                     onOpenKeys = { runtimeViewModel.openProviderKeysDialog() }
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // Section 2: OTA App Updates
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { onNavigateToUpdate() }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Обновление приложения",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Проверка новых релизов через GitHub Releases",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Section 3: Supported Agents
+            item {
+                Text(
+                    text = "Поддерживаемые агенты и протоколы",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                AgentCardsList(
+                    onConfigureOpenCode = { runtimeViewModel.openProviderKeysDialog() }
+                )
+            }
+
+            // Section 4: Remote OpenCode Servers
+            item {
                 Text(
                     text = "Удалённые серверы OpenCode",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
             val remoteProfiles = uiState.profiles.filter { it.id != LocalRuntimeSupervisor.LOCAL_PROFILE_ID }
@@ -93,7 +162,7 @@ fun SettingsScreen(
                         text = "Нет добавленных удаленных серверов. Нажмите +, чтобы подключиться к компьютеру или VPS.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 12.dp)
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
             } else {
@@ -105,11 +174,11 @@ fun SettingsScreen(
                         onSelect = { viewModel.selectActiveProfile(profile.id) },
                         onDelete = { viewModel.deleteProfile(profile.id) }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
 
+        // Add Profile Dialog
         if (uiState.showAddDialog) {
             AddProfileDialog(
                 uiState = uiState,
@@ -118,41 +187,28 @@ fun SettingsScreen(
                 onUsernameChange = { viewModel.onDraftUsernameChange(it) },
                 onPasswordChange = { viewModel.onDraftPasswordChange(it) },
                 onCleartextToggle = { viewModel.onDraftCleartextToggle(it) },
-                onTestConnection = { viewModel.testConnection() },
+                onTest = { viewModel.testConnection() },
                 onSave = { viewModel.saveProfile() },
                 onDismiss = { viewModel.dismissAddDialog() }
             )
         }
 
-        if (runtimeUiState.showOnboardingDialog) {
-            OnboardingDialog(
-                onSelectLocal = {
-                    runtimeViewModel.dismissOnboarding()
-                    runtimeViewModel.install()
-                },
-                onSelectRemote = {
-                    runtimeViewModel.dismissOnboarding()
-                    viewModel.openAddDialog()
-                },
-                onDismiss = { runtimeViewModel.dismissOnboarding() }
-            )
-        }
-
+        // Log Viewer Dialog
         if (runtimeUiState.showLogsDialog) {
             LogViewerDialog(
                 logs = logs,
-                filterQuery = runtimeUiState.logFilterQuery,
-                onFilterChange = { runtimeViewModel.updateLogFilter(it) },
-                onClearLogs = { runtimeViewModel.clearLogs() },
-                onDismiss = { runtimeViewModel.dismissLogsDialog() }
+                onDismiss = { runtimeViewModel.closeLogsDialog() },
+                onClear = { runtimeViewModel.clearLogs() }
             )
         }
 
-        if (runtimeUiState.showProviderKeysDialog) {
+        // Provider API Keys Dialog
+        if (runtimeUiState.showKeysDialog) {
             ProviderKeysDialog(
-                currentKeys = providerKeys,
-                onSaveKey = { envVar, value -> runtimeViewModel.saveProviderKey(envVar, value) },
-                onDismiss = { runtimeViewModel.dismissProviderKeysDialog() }
+                providerKeys = providerKeys,
+                onSaveKey = { prov, key -> runtimeViewModel.saveProviderKey(prov, key) },
+                onRemoveKey = { prov -> runtimeViewModel.removeProviderKey(prov) },
+                onDismiss = { runtimeViewModel.closeProviderKeysDialog() }
             )
         }
     }
@@ -163,14 +219,18 @@ fun ProfileCard(
     profile: ConnectionProfileEntity,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onSelect() }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -181,21 +241,17 @@ fun ProfileCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = profile.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Text(text = profile.name, style = MaterialTheme.typography.titleMedium)
                     if (isSelected) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Active",
+                            contentDescription = "Активен",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = profile.url,
                     style = MaterialTheme.typography.bodySmall,
@@ -203,19 +259,12 @@ fun ProfileCard(
                 )
             }
 
-            Row {
-                if (!isSelected) {
-                    TextButton(onClick = onSelect) {
-                        Text("Use")
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                    )
-                }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Удалить профиль",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -229,103 +278,94 @@ fun AddProfileDialog(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onCleartextToggle: (Boolean) -> Unit,
-    onTestConnection: () -> Unit,
+    onTest: () -> Unit,
     onSave: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    AlertDialog(
+    PocketDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add OpenCode Server") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = uiState.draftName,
-                    onValueChange = onNameChange,
-                    label = { Text("Profile Name (e.g. Home PC)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = uiState.draftUrl,
-                    onValueChange = onUrlChange,
-                    label = { Text("Server URL (http://...:4096)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = uiState.draftUsername,
-                    onValueChange = onUsernameChange,
-                    label = { Text("Username") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = uiState.draftPassword,
-                    onValueChange = onPasswordChange,
-                    label = { Text("Server Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Allow cleartext HTTP", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = uiState.draftAllowCleartext,
-                        onCheckedChange = onCleartextToggle
-                    )
-                }
-
-                if (uiState.draftAllowCleartext) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Unencrypted HTTP transmits credentials in plain text.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-
-                uiState.testConnectionStatus?.let { status ->
-                    Text(
-                        text = status,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (status.startsWith("Success")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onTestConnection,
-                    enabled = !uiState.isTestingConnection,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (uiState.isTestingConnection) "Testing..." else "Test Connection")
-                }
-            }
-        },
+        title = "Новый сервер",
         confirmButton = {
-            Button(onClick = onSave) {
-                Text("Save")
+            Button(
+                onClick = onSave,
+                enabled = uiState.draftName.isNotBlank() && uiState.draftUrl.isNotBlank() && !uiState.isTesting
+            ) {
+                Text("Сохранить")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        },
+        modifier = modifier
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = uiState.draftName,
+                onValueChange = onNameChange,
+                label = { Text("Название") },
+                placeholder = { Text("Home PC") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.draftUrl,
+                onValueChange = onUrlChange,
+                label = { Text("URL сервера") },
+                placeholder = { Text("http://192.168.1.50:4096") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.draftUsername,
+                onValueChange = onUsernameChange,
+                label = { Text("Логин") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.draftPassword,
+                onValueChange = onPasswordChange,
+                label = { Text("Пароль") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Разрешить HTTP (Cleartext)", style = MaterialTheme.typography.bodySmall)
+                Switch(
+                    checked = uiState.draftAllowCleartext,
+                    onCheckedChange = onCleartextToggle
+                )
+            }
+
+            Button(
+                onClick = onTest,
+                enabled = uiState.draftUrl.isNotBlank() && !uiState.isTesting,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (uiState.isTesting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Проверить подключение")
+            }
+
+            uiState.testResult?.let { res ->
+                Text(
+                    text = res,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (res.startsWith("Успешно")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
             }
         }
-    )
+    }
 }

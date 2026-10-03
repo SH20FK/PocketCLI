@@ -16,16 +16,21 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
+import com.pocketcli.core.model.Workspace
+import com.pocketcli.core.model.WorkspaceWithDetails
 import com.pocketcli.core.ui.theme.PocketCLITheme
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.feature.chat.ChatScreen
 import com.pocketcli.feature.chat.ChatViewModel
+import com.pocketcli.feature.projects.ProjectDetailScreen
 import com.pocketcli.feature.projects.ProjectsScreen
 import com.pocketcli.feature.projects.ProjectsViewModel
 import com.pocketcli.feature.sessions.SessionsScreen
 import com.pocketcli.feature.sessions.SessionsViewModel
 import com.pocketcli.feature.settings.SettingsScreen
 import com.pocketcli.feature.settings.SettingsViewModel
+import com.pocketcli.feature.settings.update.UpdateScreen
+import com.pocketcli.feature.settings.update.UpdateViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
@@ -33,7 +38,9 @@ import javax.inject.Inject
 @Serializable object SessionsRoute
 @Serializable data class ChatRoute(val sessionId: String, val profileId: String = "")
 @Serializable object ProjectsRoute
+@Serializable data class ProjectDetailRoute(val workspaceId: String)
 @Serializable object SettingsRoute
+@Serializable object UpdateRoute
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -53,8 +60,8 @@ class MainActivity : ComponentActivity() {
                 NavigationSuiteScaffold(
                     navigationSuiteItems = {
                         item(
-                            icon = { Icon(Icons.Default.Chat, contentDescription = "Sessions") },
-                            label = { Text("Sessions") },
+                            icon = { Icon(Icons.Default.Chat, contentDescription = "Чаты") },
+                            label = { Text("Чаты") },
                             selected = selectedTab == 0,
                             onClick = {
                                 selectedTab = 0
@@ -64,8 +71,8 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         item(
-                            icon = { Icon(Icons.Default.Folder, contentDescription = "Projects") },
-                            label = { Text("Projects") },
+                            icon = { Icon(Icons.Default.Folder, contentDescription = "Проекты") },
+                            label = { Text("Проекты") },
                             selected = selectedTab == 1,
                             onClick = {
                                 selectedTab = 1
@@ -75,8 +82,8 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         item(
-                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                            label = { Text("Settings") },
+                            icon = { Icon(Icons.Default.Settings, contentDescription = "Настройки") },
+                            label = { Text("Настройки") },
                             selected = selectedTab == 2,
                             onClick = {
                                 selectedTab = 2
@@ -107,16 +114,42 @@ class MainActivity : ComponentActivity() {
                             ProjectsScreen(
                                 viewModel = viewModel,
                                 onProjectClick = { workspaceId ->
-                                    selectedTab = 0
-                                    navController.navigate(SessionsRoute) {
-                                        popUpTo(SessionsRoute) { inclusive = true }
-                                    }
+                                    navController.navigate(ProjectDetailRoute(workspaceId))
                                 },
                                 onStartSessionForProject = { workspaceId ->
                                     selectedTab = 0
                                     navController.navigate(SessionsRoute) {
                                         popUpTo(SessionsRoute) { inclusive = true }
                                     }
+                                }
+                            )
+                        }
+
+                        composable<ProjectDetailRoute> { backStackEntry ->
+                            val route = backStackEntry.toRoute<ProjectDetailRoute>()
+                            val projectsViewModel: ProjectsViewModel = hiltViewModel()
+                            val uiState by projectsViewModel.uiState.collectAsState()
+                            val item = uiState.workspaces.find { it.workspace.id == route.workspaceId }
+                                ?: WorkspaceWithDetails(
+                                    workspace = Workspace(
+                                        id = route.workspaceId,
+                                        profileId = uiState.activeProfileId,
+                                        displayName = "Проект",
+                                        localPath = ""
+                                    )
+                                )
+
+                            ProjectDetailScreen(
+                                workspaceItem = item,
+                                onNavigateBack = { navController.popBackStack() },
+                                onStartChat = { wsId ->
+                                    selectedTab = 0
+                                    navController.navigate(SessionsRoute) {
+                                        popUpTo(SessionsRoute) { inclusive = true }
+                                    }
+                                },
+                                onDeleteProject = { wsId ->
+                                    projectsViewModel.deleteWorkspace(wsId)
                                 }
                             )
                         }
@@ -138,7 +171,16 @@ class MainActivity : ComponentActivity() {
                         composable<SettingsRoute> {
                             val viewModel: SettingsViewModel = hiltViewModel()
                             SettingsScreen(
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                onNavigateToUpdate = { navController.navigate(UpdateRoute) }
+                            )
+                        }
+
+                        composable<UpdateRoute> {
+                            val updateViewModel: UpdateViewModel = hiltViewModel()
+                            UpdateScreen(
+                                viewModel = updateViewModel,
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
                     }

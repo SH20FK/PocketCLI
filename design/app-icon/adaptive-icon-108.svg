@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <rect id="bg" width="108" height="108" fill="#21182F"/>
+  </defs>
+  <!-- Background -->
+  <use href="#bg"/>
+  
+  <!-- Safe zone overlay: 66x66 from (21,21) -->
+  <!-- Scaled Pocket Prompt: 24x24 -> 58x58 scale factor = 2.416, translation: x=25, y=24 -->
+  <g transform="translate(25, 24) scale(2.4166)" fill="none" stroke="#DCC2FF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+    <path id="pocket" d="M5 8V16C5 18.2 6.8 20 9 20H15C17.2 20 19 18.2 19 16V8"/>
+    <path id="prompt" d="M8.5 10.5L11.5 13L8.5 15.5"/>
+    <path id="cursor" d="M13 15.5H16"/>
+  </g>
+</svg>

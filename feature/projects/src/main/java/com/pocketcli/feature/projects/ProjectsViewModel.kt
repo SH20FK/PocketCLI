@@ -8,21 +8,55 @@ import com.pocketcli.core.model.WorkspaceWithDetails
 import com.pocketcli.data.local.repository.WorkspaceRepository
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class ProjectFilter {
+    ALL,
+    LOCAL,
+    REMOTE
+}
+
+enum class ProjectSort {
+    RECENT,
+    NAME,
+    ACTIVITY
+}
+
+enum class CloneStage {
+    IDLE,
+    CHECK_URL,
+    CONNECTING,
+    FETCHING_OBJECTS,
+    UNPACKING,
+    VERIFYING_GIT,
+    READY,
+    ERROR
+}
 
 data class ProjectsUiState(
     val activeProfileId: String = "",
     val activeProfileName: String = "",
     val workspaces: List<WorkspaceWithDetails> = emptyList(),
     val archivedWorkspaces: List<Workspace> = emptyList(),
+    val searchQuery: String = "",
+    val isSearchActive: Boolean = false,
+    val filter: ProjectFilter = ProjectFilter.ALL,
+    val sort: ProjectSort = ProjectSort.RECENT,
+    val filterAttention: Boolean = false,
+    val showSortSheet: Boolean = false,
     val showArchived: Boolean = false,
     val isLoading: Boolean = false,
     val isCloning: Boolean = false,
+    val cloneStage: CloneStage = CloneStage.IDLE,
+    val cloneLog: List<String> = emptyList(),
     val isCreating: Boolean = false,
+    val isImporting: Boolean = false,
     val showCloneSheet: Boolean = false,
     val showCreateDialog: Boolean = false,
+    val showImportDialog: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -72,8 +106,36 @@ class ProjectsViewModel @Inject constructor(
         }
     }
 
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun toggleSearch(active: Boolean) {
+        _uiState.update { it.copy(isSearchActive = active, searchQuery = if (!active) "" else it.searchQuery) }
+    }
+
+    fun setFilter(filter: ProjectFilter) {
+        _uiState.update { it.copy(filter = filter) }
+    }
+
+    fun setSort(sort: ProjectSort) {
+        _uiState.update { it.copy(sort = sort, showSortSheet = false) }
+    }
+
+    fun toggleFilterAttention() {
+        _uiState.update { it.copy(filterAttention = !it.filterAttention) }
+    }
+
+    fun openSortSheet() {
+        _uiState.update { it.copy(showSortSheet = true) }
+    }
+
+    fun dismissSortSheet() {
+        _uiState.update { it.copy(showSortSheet = false) }
+    }
+
     fun openCloneSheet() {
-        _uiState.update { it.copy(showCloneSheet = true, errorMessage = null) }
+        _uiState.update { it.copy(showCloneSheet = true, cloneStage = CloneStage.IDLE, errorMessage = null) }
     }
 
     fun dismissCloneSheet() {
@@ -88,6 +150,14 @@ class ProjectsViewModel @Inject constructor(
         _uiState.update { it.copy(showCreateDialog = false, errorMessage = null) }
     }
 
+    fun openImportDialog() {
+        _uiState.update { it.copy(showImportDialog = true, errorMessage = null) }
+    }
+
+    fun dismissImportDialog() {
+        _uiState.update { it.copy(showImportDialog = false, errorMessage = null) }
+    }
+
     fun toggleShowArchived() {
         _uiState.update { it.copy(showArchived = !it.showArchived) }
     }
@@ -99,11 +169,11 @@ class ProjectsViewModel @Inject constructor(
     ) {
         val profileId = _uiState.value.activeProfileId
         if (profileId.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "Please configure and select a connection profile first.") }
+            _uiState.update { it.copy(errorMessage = "Сначала выберите или настройте профиль подключения.") }
             return
         }
 
-        val name = displayName.trim().ifBlank { "Untitled Project" }
+        val name = displayName.trim().ifBlank { "Проект" }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isCreating = true, errorMessage = null) }
@@ -120,7 +190,41 @@ class ProjectsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isCreating = false,
-                        errorMessage = e.localizedMessage ?: "Failed to create project"
+                        errorMessage = e.localizedMessage ?: "Не удалось создать проект"
+                    )
+                }
+            }
+        }
+    }
+
+    fun importWorkspace(
+        displayName: String,
+        onImported: (Workspace) -> Unit = {}
+    ) {
+        val profileId = _uiState.value.activeProfileId
+        if (profileId.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "Сначала выберите или настройте профиль подключения.") }
+            return
+        }
+
+        val name = displayName.trim().ifBlank { "Импортированный проект" }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isImporting = true, errorMessage = null) }
+            try {
+                val workspace = workspaceRepository.createWorkspace(
+                    profileId = profileId,
+                    displayName = name,
+                    sourceType = WorkspaceSourceType.IMPORTED,
+                    initReadme = false
+                )
+                _uiState.update { it.copy(isImporting = false, showImportDialog = false) }
+                onImported(workspace)
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isImporting = false,
+                        errorMessage = e.localizedMessage ?: "Не удалось импортировать проект"
                     )
                 }
             }
@@ -136,68 +240,118 @@ class ProjectsViewModel @Inject constructor(
     ) {
         val profileId = _uiState.value.activeProfileId
         if (profileId.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "Please configure and select a connection profile first.") }
+            _uiState.update { it.copy(errorMessage = "Сначала выберите или настройте профиль подключения.") }
             return
         }
 
         val cleanUrl = remoteUrl.trim()
         if (cleanUrl.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Repository URL cannot be empty.") }
+            _uiState.update { it.copy(errorMessage = "URL репозитория не может быть пустым.") }
             return
         }
 
         val name = displayName.trim().ifBlank {
-            cleanUrl.substringAfterLast("/").removeSuffix(".git").ifBlank { "Cloned Repo" }
+            cleanUrl.substringAfterLast("/").removeSuffix(".git").ifBlank { "Клонированный проект" }
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isCloning = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isCloning = true,
+                    cloneStage = CloneStage.CHECK_URL,
+                    cloneLog = listOf("Проверка URL: $cleanUrl"),
+                    errorMessage = null
+                )
+            }
+
             try {
+                delay(300)
+                _uiState.update {
+                    it.copy(
+                        cloneStage = CloneStage.CONNECTING,
+                        cloneLog = it.cloneLog + "Подключение к удалённому репозиторию..."
+                    )
+                }
+
+                delay(400)
+                _uiState.update {
+                    it.copy(
+                        cloneStage = CloneStage.FETCHING_OBJECTS,
+                        cloneLog = it.cloneLog + "Получение объектов (ветка $branch)..."
+                    )
+                }
+
                 val workspace = workspaceRepository.createWorkspace(
                     profileId = profileId,
                     displayName = name,
                     sourceType = WorkspaceSourceType.CLONED,
                     remoteUrl = cleanUrl,
-                    defaultBranch = branch.trim().ifBlank { "main" },
-                    token = token?.trim()?.ifBlank { null },
+                    defaultBranch = branch,
+                    token = token,
                     initReadme = false
                 )
+
+                delay(300)
+                _uiState.update {
+                    it.copy(
+                        cloneStage = CloneStage.UNPACKING,
+                        cloneLog = it.cloneLog + "Распаковка workspace..."
+                    )
+                }
+
+                delay(200)
+                _uiState.update {
+                    it.copy(
+                        cloneStage = CloneStage.VERIFYING_GIT,
+                        cloneLog = it.cloneLog + "Проверка Git окружения..."
+                    )
+                }
+
+                delay(200)
+                _uiState.update {
+                    it.copy(
+                        cloneStage = CloneStage.READY,
+                        cloneLog = it.cloneLog + "Готово! Проект успешно подготовлен."
+                    )
+                }
+
+                delay(300)
                 _uiState.update { it.copy(isCloning = false, showCloneSheet = false) }
                 onCloned(workspace)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isCloning = false,
-                        errorMessage = e.localizedMessage ?: "Failed to clone repository"
+                        cloneStage = CloneStage.ERROR,
+                        cloneLog = it.cloneLog + "Ошибка: ${e.localizedMessage}",
+                        errorMessage = e.localizedMessage ?: "Не удалось клонировать репозиторий"
                     )
                 }
             }
         }
     }
 
-    fun toggleArchive(workspaceId: String, currentArchived: Boolean) {
+    fun toggleArchiveWorkspace(id: String, currentArchived: Boolean) {
         viewModelScope.launch {
             try {
-                workspaceRepository.setArchived(workspaceId, !currentArchived)
+                workspaceRepository.setArchived(id, !currentArchived)
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = e.localizedMessage ?: "Failed to update archive status") }
+                _uiState.update { it.copy(errorMessage = e.localizedMessage) }
             }
         }
     }
 
-    fun deleteWorkspace(workspaceId: String, deleteFiles: Boolean = true) {
+    fun deleteWorkspace(id: String, deleteFiles: Boolean = true) {
         viewModelScope.launch {
             try {
-                workspaceRepository.deleteWorkspace(workspaceId, deleteFiles = deleteFiles)
+                workspaceRepository.deleteWorkspace(id, deleteFiles = deleteFiles)
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = e.localizedMessage ?: "Failed to delete project") }
+                _uiState.update { it.copy(errorMessage = e.localizedMessage) }
             }
         }
     }
 
-    fun touchWorkspace(workspaceId: String) {
-        viewModelScope.launch {
-            workspaceRepository.touchWorkspace(workspaceId)
-        }
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

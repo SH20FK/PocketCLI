@@ -9,8 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.model.WorkspaceSourceType
+import com.pocketcli.core.model.WorkspaceWithDetails
+import com.pocketcli.core.ui.components.AgentActivityState
+import com.pocketcli.core.ui.components.PocketAppBarWithSearch
+import com.pocketcli.core.ui.components.PocketButtonGroup
+import com.pocketcli.core.ui.components.PocketStatusPill
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,205 +27,212 @@ fun ProjectsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var projectToDelete by remember { mutableStateOf<String?>(null) }
-    var showFabMenu by remember { mutableStateOf(false) }
+
+    val filterOptions = listOf("Все", "Локальные", "Git")
+    val selectedFilterIndex = when (uiState.filter) {
+        ProjectFilter.ALL -> 0
+        ProjectFilter.LOCAL -> 1
+        ProjectFilter.REMOTE -> 2
+    }
+
+    val displayList = remember(uiState.workspaces, uiState.archivedWorkspaces, uiState.showArchived, uiState.filter, uiState.sort, uiState.searchQuery, uiState.filterAttention) {
+        val base = if (uiState.showArchived) {
+            uiState.archivedWorkspaces.map { ws -> WorkspaceWithDetails(workspace = ws) }
+        } else {
+            uiState.workspaces
+        }
+
+        var filtered = when (uiState.filter) {
+            ProjectFilter.ALL -> base
+            ProjectFilter.LOCAL -> base.filter { it.workspace.sourceType != WorkspaceSourceType.CLONED }
+            ProjectFilter.REMOTE -> base.filter { it.workspace.sourceType == WorkspaceSourceType.CLONED }
+        }
+
+        if (uiState.filterAttention) {
+            filtered = filtered.filter { it.gitStatus.isDirty }
+        }
+
+        if (uiState.searchQuery.isNotBlank()) {
+            filtered = filtered.filter {
+                it.workspace.displayName.contains(uiState.searchQuery, ignoreCase = true) ||
+                it.workspace.localPath.contains(uiState.searchQuery, ignoreCase = true)
+            }
+        }
+
+        when (uiState.sort) {
+            ProjectSort.RECENT -> filtered.sortedByDescending { it.workspace.lastOpenedAt }
+            ProjectSort.NAME -> filtered.sortedBy { it.workspace.displayName.lowercase() }
+            ProjectSort.ACTIVITY -> filtered.sortedByDescending { it.sessionCount }
+        }
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(if (uiState.showArchived) "Archived Projects" else "Projects")
-                        if (uiState.activeProfileName.isNotEmpty()) {
-                            Text(
-                                text = "Profile: ${uiState.activeProfileName}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+            PocketAppBarWithSearch(
+                title = if (uiState.showArchived) "Архив проектов" else "Проекты",
+                subtitle = if (uiState.activeProfileName.isNotEmpty()) "Профиль: ${uiState.activeProfileName} · ${displayList.size} проектов" else "${displayList.size} проектов",
+                statusPill = {
+                    PocketStatusPill(state = AgentActivityState.READY, customText = "Локально")
                 },
+                isSearchActive = uiState.isSearchActive,
+                searchQuery = uiState.searchQuery,
+                onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                onToggleSearch = { viewModel.toggleSearch(it) },
                 actions = {
+                    IconButton(onClick = { viewModel.openSortSheet() }) {
+                        Icon(
+                            imageVector = Icons.Default.Sort,
+                            contentDescription = "Сортировка"
+                        )
+                    }
                     IconButton(onClick = { viewModel.toggleShowArchived() }) {
                         Icon(
                             imageVector = if (uiState.showArchived) Icons.Default.Inventory else Icons.Default.Archive,
-                            contentDescription = if (uiState.showArchived) "Show Active" else "Show Archived"
+                            contentDescription = if (uiState.showArchived) "Активные" else "Архив"
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
-            Box {
-                FloatingActionButton(onClick = { showFabMenu = true }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Project")
-                }
-                DropdownMenu(
-                    expanded = showFabMenu,
-                    onDismissRequest = { showFabMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Clone Git Repository") },
-                        leadingIcon = {
-                            Icon(Icons.Default.CloudSync, contentDescription = null)
-                        },
-                        onClick = {
-                            showFabMenu = false
-                            viewModel.openCloneSheet()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Create Local Project") },
-                        leadingIcon = {
-                            Icon(Icons.Default.CreateNewFolder, contentDescription = null)
-                        },
-                        onClick = {
-                            showFabMenu = false
-                            viewModel.openCreateDialog()
-                        }
-                    )
-                }
-            }
+            AddProjectFabMenu(
+                onCloneClick = { viewModel.openCloneSheet() },
+                onCreateClick = { viewModel.openCreateDialog() },
+                onImportClick = { viewModel.openImportDialog() }
+            )
         },
         modifier = modifier
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val list = if (uiState.showArchived) {
-                uiState.archivedWorkspaces.map { ws ->
-                    com.pocketcli.core.model.WorkspaceWithDetails(workspace = ws)
-                }
-            } else {
-                uiState.workspaces
-            }
-
-            if (list.isEmpty()) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        val message = if (uiState.activeProfileId.isEmpty()) {
-                            "No active connection profile.\nConfigure your profile in Settings to manage projects."
-                        } else if (uiState.showArchived) {
-                            "No archived projects."
-                        } else {
-                            "No projects yet.\nClone a repository or create a local project to get started."
+            // Filters bar
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                PocketButtonGroup(
+                    options = filterOptions,
+                    selectedIndex = selectedFilterIndex,
+                    onSelectIndex = { index ->
+                        val filter = when (index) {
+                            0 -> ProjectFilter.ALL
+                            1 -> ProjectFilter.LOCAL
+                            else -> ProjectFilter.REMOTE
                         }
-                        Text(
-                            text = message,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        viewModel.setFilter(filter)
+                    }
+                )
 
-                        if (uiState.activeProfileId.isNotEmpty() && !uiState.showArchived) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(onClick = { viewModel.openCloneSheet() }) {
-                                    Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Clone Repo")
-                                }
-                                OutlinedButton(onClick = { viewModel.openCreateDialog() }) {
-                                    Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("New Project")
-                                }
-                            }
-                        }
+                if (uiState.filterAttention) {
+                    FilledTonalButton(onClick = { viewModel.toggleFilterAttention() }) {
+                        Text("Внимание!", style = MaterialTheme.typography.labelSmall)
                     }
                 }
+            }
+
+            if (displayList.isEmpty()) {
+                ProjectsEmptyState(
+                    onAddProject = { viewModel.openCloneSheet() }
+                )
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(list, key = { it.workspace.id }) { item ->
+                    items(displayList, key = { it.workspace.id }) { item ->
                         ProjectCard(
                             item = item,
-                            onClick = {
-                                viewModel.touchWorkspace(item.workspace.id)
-                                onProjectClick(item.workspace.id)
-                            },
-                            onStartSession = {
-                                viewModel.touchWorkspace(item.workspace.id)
-                                onStartSessionForProject(item.workspace.id)
-                            },
+                            onClick = { onProjectClick(item.workspace.id) },
+                            onStartSession = { onStartSessionForProject(item.workspace.id) },
                             onToggleArchive = {
-                                viewModel.toggleArchive(item.workspace.id, item.workspace.archived)
+                                viewModel.toggleArchiveWorkspace(item.workspace.id, item.workspace.archived)
                             },
-                            onDelete = {
-                                projectToDelete = item.workspace.id
-                            }
+                            onDelete = { projectToDelete = item.workspace.id }
                         )
                     }
-                }
-            }
-
-            uiState.errorMessage?.let { error ->
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                ) {
-                    Text(error)
                 }
             }
         }
 
+        // Clone Modal Sheet
         if (uiState.showCloneSheet) {
             CloneBottomSheet(
                 isCloning = uiState.isCloning,
+                cloneStage = uiState.cloneStage,
+                cloneLog = uiState.cloneLog,
                 onDismiss = { viewModel.dismissCloneSheet() },
                 onClone = { url, name, branch, token ->
-                    viewModel.cloneWorkspace(url, name, branch, token)
+                    viewModel.cloneWorkspace(url, name, branch, token) { ws ->
+                        onProjectClick(ws.id)
+                    }
                 }
             )
         }
 
+        // Create Project Dialog
         if (uiState.showCreateDialog) {
             CreateProjectDialog(
                 isCreating = uiState.isCreating,
                 onDismiss = { viewModel.dismissCreateDialog() },
                 onCreate = { name, initReadme ->
-                    viewModel.createWorkspace(name, initReadme)
+                    viewModel.createWorkspace(name, initReadme) { ws ->
+                        onProjectClick(ws.id)
+                    }
                 }
             )
         }
 
+        // Import Project Dialog
+        if (uiState.showImportDialog) {
+            ImportWorkspaceDialog(
+                isImporting = uiState.isImporting,
+                onDismiss = { viewModel.dismissImportDialog() },
+                onImport = { name ->
+                    viewModel.importWorkspace(name) { ws ->
+                        onProjectClick(ws.id)
+                    }
+                }
+            )
+        }
+
+        // Sort Bottom Sheet
+        if (uiState.showSortSheet) {
+            SortBottomSheet(
+                currentSort = uiState.sort,
+                filterAttention = uiState.filterAttention,
+                onSelectSort = { viewModel.setSort(it) },
+                onToggleAttention = { viewModel.toggleFilterAttention() },
+                onDismiss = { viewModel.dismissSortSheet() }
+            )
+        }
+
+        // Delete Confirmation Dialog
         projectToDelete?.let { wsId ->
             AlertDialog(
                 onDismissRequest = { projectToDelete = null },
-                title = { Text("Delete Project") },
-                text = { Text("Are you sure you want to delete this project and its local files? This action cannot be undone.") },
+                title = { Text("Удалить проект?") },
+                text = { Text("Это действие удалит проект и его рабочие файлы из PocketCLI.") },
                 confirmButton = {
-                    Button(
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    TextButton(
                         onClick = {
                             viewModel.deleteWorkspace(wsId, deleteFiles = true)
                             projectToDelete = null
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete")
+                        Text("Удалить")
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { projectToDelete = null }) {
-                        Text("Cancel")
+                        Text("Отмена")
                     }
                 }
             )

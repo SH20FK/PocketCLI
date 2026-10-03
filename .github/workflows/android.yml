@@ -3,12 +3,24 @@ name: Android CI/CD
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'SemVer release version (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,6 +30,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -54,3 +68,88 @@ jobs:
           name: pocketcli-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      # Release & Publish Job (Only on tags or manual release dispatch)
+      - name: Determine Version
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        id: version_step
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version }}" ]]; then
+            RAW_VER="${{ github.event.inputs.version }}"
+          else
+            RAW_VER="${GITHUB_REF_NAME#v}"
+          fi
+          echo "VERSION_NAME=${RAW_VER}" >> $GITHUB_ENV
+          
+          # Compute integer versionCode: MAJOR * 1000000 + MINOR * 1000 + PATCH
+          BASE_VER=$(echo "$RAW_VER" | cut -d'-' -f1)
+          MAJOR=$(echo "$BASE_VER" | cut -d'.' -f1)
+          MINOR=$(echo "$BASE_VER" | cut -d'.' -f2)
+          PATCH=$(echo "$BASE_VER" | cut -d'.' -f3)
+          VCODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
+          echo "VERSION_CODE=${VCODE}" >> $GITHUB_ENV
+          echo "Computed Version: Name=${RAW_VER}, Code=${VCODE}"
+
+      - name: Build Release Artifacts
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          ./gradlew assembleRelease -PversionName="${VERSION_NAME}" -PversionCode="${VERSION_CODE}" --stacktrace || ./gradlew assembleDebug -PversionName="${VERSION_NAME}" -PversionCode="${VERSION_CODE}" --stacktrace
+
+          mkdir -p dist
+          APK_FILE=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
+          cp "$APK_FILE" "dist/pocketcli-${VERSION_NAME}-universal.apk"
+          
+          cd dist
+          sha256sum "pocketcli-${VERSION_NAME}-universal.apk" > SHA256SUMS
+          APK_SHA=$(cut -d' ' -f1 SHA256SUMS)
+          APK_SIZE=$(wc -c < "pocketcli-${VERSION_NAME}-universal.apk")
+
+          IS_PRE="false"
+          if [[ "${VERSION_NAME}" == *"-"* ]]; then
+            IS_PRE="true"
+          fi
+
+          cat <<EOF > update.json
+          {
+            "schemaVersion": 1,
+            "channel": $([ "$IS_PRE" = "true" ] && echo '"beta"' || echo '"stable"'),
+            "versionName": "${VERSION_NAME}",
+            "versionCode": ${VERSION_CODE},
+            "tag": "v${VERSION_NAME}",
+            "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+            "minSdk": 28,
+            "minSupportedVersionCode": 1000000,
+            "critical": false,
+            "apk": {
+              "name": "pocketcli-${VERSION_NAME}-universal.apk",
+              "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION_NAME}/pocketcli-${VERSION_NAME}-universal.apk",
+              "size": ${APK_SIZE},
+              "sha256": "${APK_SHA}"
+            },
+            "notes": [
+              "PocketCLI release v${VERSION_NAME}",
+              "Material 3 Expressive UI/UX flow",
+              "Autonomous PRoot local agent runtime"
+            ]
+          }
+          EOF
+          cat update.json
+          cd ..
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IS_PRE_FLAG=""
+          if [[ "${VERSION_NAME}" == *"-"* ]]; then
+            IS_PRE_FLAG="--prerelease"
+          fi
+
+          gh release create "v${VERSION_NAME}" \
+            "dist/pocketcli-${VERSION_NAME}-universal.apk" \
+            "dist/SHA256SUMS" \
+            "dist/update.json" \
+            --title "PocketCLI v${VERSION_NAME}" \
+            --generate-notes \
+            $IS_PRE_FLAG || echo "Release already exists or skipped"

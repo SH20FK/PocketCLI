@@ -81,6 +81,48 @@
 - [x] Написаны юнит-тесты `LocalRuntimeViewModelTest`.
 - [x] Пройдена верификация CI на GitHub Actions (Run 37112584531).
 
+## Этап 3 — UI/UX Flow и Дизайн-система Material 3 Expressive (Реализован)
+- [x] Создана документация `docs/UI_REFERENCE_MAP.md` с маппингом компонентов на LastChat, Read You, Metrolist, Podium, Kori, RvKernel, MD3-Windows, DialogX.
+- [x] Разработана спецификация иконки `docs/APP_ICON_SPEC.md` и геометрия знака **Pocket Prompt** (карман + терминальный шеврон `>_`).
+- [x] Созданы векторные исходники иконки: `pocket-prompt-master.svg`, `pocket-prompt-outlined.svg`, `pocket-prompt-monochrome.svg`, `adaptive-icon-108.svg`.
+- [x] Сгенерированы Android-ресурсы адаптивной иконки: `ic_launcher_foreground.xml`, `ic_launcher_background.xml`, `ic_launcher_monochrome.xml`, `mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml`, обновлен `AndroidManifest.xml`.
+- [x] Разработана спецификация анимаций `docs/MOTION_SPEC.md` и каталог ресурсов `docs/ANIMATION_ASSETS.md`.
+- [x] Реализована основа дизайн-системы `:core:ui`:
+  - `PocketMotion.kt`: физические токены spring и стандартизированные длительности.
+  - `PocketAnimatedIcon.kt`: бесшовные анимированные переходы Send <-> Stop, Play <-> Stop, Expand <-> Collapse, Sync <-> Check, Eye <-> EyeOff.
+  - `PocketStatusPill.kt`: статус-пилюля активности агента (`Готов`, `Думает`, `Выполняет`, `Ждёт подтверждения`, `Офлайн`).
+  - `PocketTwoRowsTopAppBar.kt` и `PocketAppBarWithSearch.kt`: выразительные двухрядные заголовки со встроенным поиском.
+  - `PocketButtonGroup.kt`: сегментированные группы кнопок для фильтров и вкладок.
+  - `PocketSplitButton.kt`, `PocketFloatingToolbar.kt`, `PocketDialog.kt`.
+  - `ActiveSessionBar.kt`: персистентная поверхность выполняющейся сессии над навигацией (метафора мини-плеера).
+  - `DiffViewer.kt`: единый unified diff viewer с подсветкой добавлений/удалений строк и сворачиванием контекста.
+  - `PermissionDetailsSheet.kt`: модальная шторка подробностей запроса прав (Once / Always / Reject).
+- [x] Модернизация раздела «Проекты» (`:feature:projects`):
+  - Поиск, фильтры (`Все`, `Локальные`, `Git`) и сортировка (`SortBottomSheet`).
+  - Трехуровневая карточка `ProjectCard` с индикацией активности, статусом Git и действиями.
+  - Пошаговый мастер клонирования `CloneBottomSheet` с карточкой этапов `CloneProgressCard`.
+  - Диалог `CreateProjectDialog` с инициализацией Git и README.md.
+  - Диалог `ImportWorkspaceDialog` для импорта изолированной копии папки.
+  - Полноэкранный `ProjectDetailScreen` с вкладками Обзор, Файлы, Git, Terminal.
+  - Шторка быстрого выбора проекта `ProjectPickerSheet` при создании сессии.
+  - Экспрессивный `ProjectsEmptyState` и `AddProjectFabMenu`.
+- [x] Модернизация разделов «Чаты» и «Сессии» (`:feature:sessions`, `:feature:chat`):
+  - Двухрядный заголовок с пилюлей статуса рантайма и быстрым поиском.
+  - Секция «Продолжаются сейчас» (до 2 активных карточек с кнопками Open/Stop).
+  - Секция «Недавние диалоги» со свайпом удаления и Undo-Snackbar.
+  - Композер `PocketChatComposer` с чипами вложений, меню контекста и анимацией Send -> Stop.
+  - Плавающая пилюля «К новым сообщениям» при отложенном скролле вверх.
+- [x] Раздел «Настройки» и Runtime Center (`:feature:settings`):
+  - Двухрядный заголовок и навигация в Runtime Center и Обновления.
+  - Список поддерживаемых агентов (`AgentCardsList`): OpenCode, Claude Code, Gemini/Antigravity, Codex.
+  - Экран `RuntimeCenterScreen` с телеметрией, состоянием процессов, логами и проверками окружения.
+- [x] Архитектура OTA-обновлений из GitHub Releases (`:core:update` и `:feature:settings:update`):
+  - Спецификация `docs/RELEASE_PROCESS.md` и схема манифеста `update.json`.
+  - Модуль `:core:update`: `UpdateManifest`, `GitHubReleaseApi`, `ApkDownloader` с HTTP Range, `ApkVerifier` с SHA-256, `ApkInstaller`.
+  - Экран `UpdateScreen` и `UpdateViewModel` с полным конечным автоматом (Checking -> Available -> Downloading -> Verifying -> ReadyToInstall).
+  - Автоматизация CI/CD в `.github/workflows/android.yml`: динамический расчет `VERSION_CODE`, сборка APK, генерация `SHA256SUMS`, `update.json` и публикация GitHub Release по тегам `v*`.
+  - Юнит-тесты `UpdateManifestTest`, `ApkVerifierTest`, `UpdateCheckerTest`.
+
 ## Проверенные сборки и CI:
 - GitHub Actions Ubuntu Latest (CI/CD pipeline):
   - **Run 37099966772** (Этап 1 MVP) — SUCCESS

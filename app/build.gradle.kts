@@ -11,12 +11,19 @@ android {
     namespace = "com.pocketcli"
     compileSdk = 35
 
+    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
+        ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+        ?: 1000000
+    val vName = (project.findProperty("versionName") as? String)
+        ?: System.getenv("VERSION_NAME")
+        ?: "1.0.0"
+
     defaultConfig {
         applicationId = "com.pocketcli"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = vCode
+        versionName = vName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,6 +67,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:ui"))
     implementation(project(":core:security"))
+    implementation(project(":core:update"))
     implementation(project(":data:local"))
     implementation(project(":data:opencode"))
     implementation(project(":runtime:remote"))

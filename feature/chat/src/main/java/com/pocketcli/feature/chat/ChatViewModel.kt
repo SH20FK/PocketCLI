@@ -14,11 +14,16 @@ import javax.inject.Inject
 data class ChatUiState(
     val sessionId: String = "",
     val profileId: String = "",
+    val sessionTitle: String = "Чат сессии",
+    val workspaceName: String = "Локально",
     val messages: List<Message> = emptyList(),
     val sessionState: SessionState = SessionState.IDLE,
     val pendingPermission: AgentEvent.PermissionRequested? = null,
+    val showPermissionDetails: Boolean = false,
     val selectedToolForDetails: ToolCall? = null,
+    val activeDiffFile: Pair<String, String>? = null,
     val composerDraft: String = "",
+    val attachments: List<String> = emptyList(),
     val availableModels: List<ModelInfo> = emptyList(),
     val selectedModel: ModelInfo? = null,
     val isModelPickerOpen: Boolean = false,
@@ -47,7 +52,16 @@ class ChatViewModel @Inject constructor(
                 ?: connectionManager.getActiveProfileId()
                 ?: ""
 
-            _uiState.update { it.copy(sessionId = sessionId, profileId = resolvedProfileId) }
+            val session = repository.getSession(resolvedProfileId, sessionId)
+            val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
+
+            _uiState.update {
+                it.copy(
+                    sessionId = sessionId,
+                    profileId = resolvedProfileId,
+                    sessionTitle = title
+                )
+            }
 
             // 1. Observe hybrid message stream (Room + in-flight StateFlow)
             launch {
@@ -84,6 +98,9 @@ class ChatViewModel @Inject constructor(
                             is AgentEvent.PermissionRequested -> {
                                 _uiState.update { it.copy(pendingPermission = event) }
                             }
+                            is AgentEvent.FileDiff -> {
+                                _uiState.update { it.copy(activeDiffFile = Pair(event.path, event.unifiedDiff)) }
+                            }
                             else -> Unit
                         }
                     }
@@ -94,6 +111,20 @@ class ChatViewModel @Inject constructor(
 
     fun onDraftChange(text: String) {
         _uiState.update { it.copy(composerDraft = text) }
+    }
+
+    fun addAttachment(name: String) {
+        _uiState.update { it.copy(attachments = it.attachments + name) }
+    }
+
+    fun removeAttachment(index: Int) {
+        _uiState.update {
+            val list = it.attachments.toMutableList()
+            if (index in list.indices) {
+                list.removeAt(index)
+            }
+            it.copy(attachments = list)
+        }
     }
 
     fun openModelPicker() {
@@ -108,13 +139,36 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(selectedModel = model, isModelPickerOpen = false) }
     }
 
+    fun openPermissionDetails() {
+        _uiState.update { it.copy(showPermissionDetails = true) }
+    }
+
+    fun dismissPermissionDetails() {
+        _uiState.update { it.copy(showPermissionDetails = false) }
+    }
+
+    fun openDiff(path: String, diff: String) {
+        _uiState.update { it.copy(activeDiffFile = Pair(path, diff)) }
+    }
+
+    fun closeDiff() {
+        _uiState.update { it.copy(activeDiffFile = null) }
+    }
+
     fun sendPrompt() {
         val state = _uiState.value
         val text = state.composerDraft.trim()
         if (text.isBlank() || state.sessionState == SessionState.BUSY) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(composerDraft = "", sessionState = SessionState.BUSY, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    composerDraft = "",
+                    attachments = emptyList(),
+                    sessionState = SessionState.BUSY,
+                    errorMessage = null
+                )
+            }
             // 1. Record user message in DB
             repository.recordUserMessage(state.profileId, state.sessionId, text)
 
@@ -124,7 +178,7 @@ class ChatViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         sessionState = SessionState.IDLE,
-                        errorMessage = "No active connection adapter. Reconnect in Settings."
+                        errorMessage = "Нет активного подключения. Проверьте настройки."
                     )
                 }
                 return@launch
@@ -136,7 +190,7 @@ class ChatViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         sessionState = SessionState.IDLE,
-                        errorMessage = "Failed to send message: ${err.message}"
+                        errorMessage = "Не удалось отправить сообщение: ${err.message}"
                     )
                 }
                 return@launch
@@ -169,7 +223,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val adapter = activeAdapter ?: connectionManager.getAdapter()
             adapter?.respondPermission(requestId, option)
-            _uiState.update { it.copy(pendingPermission = null) }
+            _uiState.update { it.copy(pendingPermission = null, showPermissionDetails = false) }
         }
     }
 

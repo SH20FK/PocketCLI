@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pocketcli.core.model.Session
 import com.pocketcli.core.model.Workspace
+import com.pocketcli.core.model.WorkspaceWithDetails
 import com.pocketcli.data.local.repository.WorkspaceRepository
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.data.opencode.repository.AgentSessionRepository
@@ -17,9 +18,13 @@ data class SessionsUiState(
     val activeProfileName: String = "",
     val sessions: List<Session> = emptyList(),
     val workspaces: List<Workspace> = emptyList(),
+    val workspacesWithDetails: List<WorkspaceWithDetails> = emptyList(),
     val selectedWorkspaceId: String? = null,
+    val searchQuery: String = "",
+    val isSearchActive: Boolean = false,
     val isCreatingSession: Boolean = false,
     val showCreateDialog: Boolean = false,
+    val showProjectPicker: Boolean = false,
     val newSessionTitle: String = "",
     val errorMessage: String? = null
 )
@@ -33,6 +38,8 @@ class SessionsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SessionsUiState())
     val uiState: StateFlow<SessionsUiState> = _uiState.asStateFlow()
+
+    private var lastDeletedSession: Session? = null
 
     init {
         viewModelScope.launch {
@@ -55,12 +62,18 @@ class SessionsViewModel @Inject constructor(
                             _uiState.update { it.copy(workspaces = list) }
                         }
                     }
+                    launch {
+                        workspaceRepository.getWorkspacesWithDetails(profile.id).collect { list ->
+                            _uiState.update { it.copy(workspacesWithDetails = list) }
+                        }
+                    }
                     syncSessions(profile.id)
                 } else {
                     _uiState.update {
                         it.copy(
                             sessions = emptyList(),
                             workspaces = emptyList(),
+                            workspacesWithDetails = emptyList(),
                             selectedWorkspaceId = null
                         )
                     }
@@ -80,6 +93,14 @@ class SessionsViewModel @Inject constructor(
         }
     }
 
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun toggleSearch(active: Boolean) {
+        _uiState.update { it.copy(isSearchActive = active, searchQuery = if (!active) "" else it.searchQuery) }
+    }
+
     fun openCreateDialog(preselectedWorkspaceId: String? = null) {
         _uiState.update {
             it.copy(
@@ -95,16 +116,24 @@ class SessionsViewModel @Inject constructor(
         _uiState.update { it.copy(showCreateDialog = false, errorMessage = null) }
     }
 
+    fun openProjectPicker() {
+        _uiState.update { it.copy(showProjectPicker = true) }
+    }
+
+    fun dismissProjectPicker() {
+        _uiState.update { it.copy(showProjectPicker = false) }
+    }
+
     fun onNewSessionTitleChange(title: String) {
         _uiState.update { it.copy(newSessionTitle = title, errorMessage = null) }
     }
 
     fun selectWorkspace(workspaceId: String?) {
-        _uiState.update { it.copy(selectedWorkspaceId = workspaceId) }
+        _uiState.update { it.copy(selectedWorkspaceId = workspaceId, showProjectPicker = false) }
     }
 
     fun createSession(onCreated: (String) -> Unit) {
-        val title = _uiState.value.newSessionTitle.ifBlank { "New Session" }
+        val title = _uiState.value.newSessionTitle.ifBlank { "Новый чат" }
         val selectedWsId = _uiState.value.selectedWorkspaceId
         val selectedWorkspace = _uiState.value.workspaces.find { it.id == selectedWsId }
 
@@ -115,7 +144,7 @@ class SessionsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isCreatingSession = false,
-                        errorMessage = "No active connection profile. Please add one in Settings."
+                        errorMessage = "Нет активного профиля подключения. Настройте его в Настройках."
                     )
                 }
                 return@launch
@@ -142,7 +171,7 @@ class SessionsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isCreatingSession = false,
-                            errorMessage = error.localizedMessage ?: error.message ?: "Failed to connect to agent server"
+                            errorMessage = error.localizedMessage ?: error.message ?: "Ошибка подключения к серверу"
                         )
                     }
                 }
@@ -153,9 +182,19 @@ class SessionsViewModel @Inject constructor(
     fun deleteSession(sessionId: String) {
         val profileId = _uiState.value.activeProfileId
         if (profileId.isNotEmpty()) {
+            val session = _uiState.value.sessions.find { it.id == sessionId }
+            lastDeletedSession = session
             viewModelScope.launch {
                 repository.deleteSession(profileId, sessionId)
             }
+        }
+    }
+
+    fun undoDeleteSession() {
+        val session = lastDeletedSession ?: return
+        viewModelScope.launch {
+            repository.saveSession(session)
+            lastDeletedSession = null
         }
     }
 }

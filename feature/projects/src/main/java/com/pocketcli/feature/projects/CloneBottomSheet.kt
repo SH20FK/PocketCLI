@@ -1,26 +1,33 @@
 package com.pocketcli.feature.projects
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.ui.theme.MonospaceCodeStyle
+import com.pocketcli.core.ui.theme.ToolSuccessColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CloneBottomSheet(
     isCloning: Boolean,
+    cloneStage: CloneStage,
+    cloneLog: List<String>,
     onDismiss: () -> Unit,
     onClone: (url: String, name: String, branch: String, token: String?) -> Unit,
     modifier: Modifier = Modifier
@@ -29,13 +36,13 @@ fun CloneBottomSheet(
     var name by remember { mutableStateOf("") }
     var branch by remember { mutableStateOf("main") }
     var isShallow by remember { mutableStateOf(true) }
-    var isPrivate by remember { mutableStateOf(false) }
     var token by remember { mutableStateOf("") }
     var showToken by remember { mutableStateOf(false) }
-    var autoNameModified by remember { mutableStateOf(false) }
+    var showLog by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = { if (!isCloning) onDismiss() },
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         modifier = modifier
     ) {
         Column(
@@ -46,149 +53,221 @@ fun CloneBottomSheet(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Clone Git Repository",
-                style = MaterialTheme.typography.titleLarge
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CloudSync,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Клонировать Git-репозиторий",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
 
-            OutlinedTextField(
-                value = url,
-                onValueChange = { newUrl ->
-                    url = newUrl
-                    if (!autoNameModified) {
+            if (isCloning || cloneStage != CloneStage.IDLE) {
+                // Step 4: Clone Progress Card
+                CloneProgressCard(
+                    stage = cloneStage,
+                    logs = cloneLog,
+                    showLog = showLog,
+                    onToggleShowLog = { showLog = !showLog }
+                )
+            } else {
+                // Steps 1-3 Form
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { newUrl ->
+                        url = newUrl
                         val inferred = newUrl.trim()
                             .substringAfterLast("/")
                             .removeSuffix(".git")
-                        if (inferred.isNotBlank()) {
+                        if (inferred.isNotBlank() && name.isBlank()) {
                             name = inferred
                         }
+                    },
+                    label = { Text("HTTPS URL репозитория") },
+                    placeholder = { Text("https://github.com/owner/repo.git") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Название проекта") },
+                    placeholder = { Text("my-project") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = branch,
+                    onValueChange = { branch = it },
+                    label = { Text("Ветка") },
+                    placeholder = { Text("main") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Shallow clone (--depth 1)",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Экономит мобильный трафик и место на диске",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                },
-                label = { Text("Repository URL") },
-                placeholder = { Text("https://github.com/user/repo.git") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                    autoNameModified = true
-                },
-                label = { Text("Project Name") },
-                placeholder = { Text("my-project") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = branch,
-                onValueChange = { branch = it },
-                label = { Text("Branch") },
-                placeholder = { Text("main") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Shallow clone (--depth 1)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Saves disk space and mobile bandwidth",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Switch(
+                        checked = isShallow,
+                        onCheckedChange = { isShallow = it }
                     )
                 }
-                Switch(
-                    checked = isShallow,
-                    onCheckedChange = { isShallow = it }
-                )
-            }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Private Repository",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Requires Personal Access Token (PAT)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = isPrivate,
-                    onCheckedChange = { isPrivate = it }
-                )
-            }
-
-            if (isPrivate) {
                 OutlinedTextField(
                     value = token,
                     onValueChange = { token = it },
-                    label = { Text("Personal Access Token") },
-                    placeholder = { Text("ghp_...") },
+                    label = { Text("Personal Access Token (для приватных репо)") },
+                    placeholder = { Text("ghp_... (опционально)") },
                     singleLine = true,
                     visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
                         IconButton(onClick = { showToken = !showToken }) {
                             Icon(
-                                imageVector = if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showToken) "Hide token" else "Show token"
+                                imageVector = if (showToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (showToken) "Скрыть токен" else "Показать токен"
                             )
                         }
                     },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-                    },
-                    supportingText = {
-                        Text("Encrypted with Android Keystore AES-256-GCM. Never saved in .git/config.")
-                    },
                     modifier = Modifier.fillMaxWidth()
                 )
-            }
 
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    enabled = !isCloning
-                ) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = {
-                        val auth = if (isPrivate && token.isNotBlank()) token.trim() else null
-                        onClone(url.trim(), name.trim(), branch.trim(), auth)
+                        onClone(
+                            url.trim(),
+                            name.trim(),
+                            branch.trim().ifBlank { "main" },
+                            token.trim().ifBlank { null }
+                        )
                     },
-                    enabled = !isCloning && url.isNotBlank()
+                    enabled = url.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (isCloning) {
+                    Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Клонировать")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CloneProgressCard(
+    stage: CloneStage,
+    logs: List<String>,
+    showLog: Boolean,
+    onToggleShowLog: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Подготовка репозитория",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            val stages = listOf(
+                Pair(CloneStage.CHECK_URL, "Проверка URL"),
+                Pair(CloneStage.CONNECTING, "Подключение"),
+                Pair(CloneStage.FETCHING_OBJECTS, "Получение объектов"),
+                Pair(CloneStage.UNPACKING, "Распаковка"),
+                Pair(CloneStage.VERIFYING_GIT, "Проверка Git"),
+                Pair(CloneStage.READY, "Готово")
+            )
+
+            val currentStageIndex = stages.indexOfFirst { it.first == stage }
+
+            for ((index, item) in stages.withIndex()) {
+                val (stageEnum, label) = item
+                val isCompleted = currentStageIndex > index || stage == CloneStage.READY
+                val isCurrent = currentStageIndex == index && stage != CloneStage.READY
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = ToolSuccessColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    } else if (isCurrent) {
                         CircularProgressIndicator(
                             strokeWidth = 2.dp,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Cloning...")
                     } else {
-                        Text("Clone")
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
+
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isCompleted || isCurrent) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            TextButton(
+                onClick = onToggleShowLog,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(if (showLog) "Скрыть журнал" else "Показать журнал")
+            }
+
+            AnimatedVisibility(visible = showLog && logs.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        for (log in logs) {
+                            Text(
+                                text = log,
+                                style = MonospaceCodeStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            )
+                        }
                     }
                 }
             }
