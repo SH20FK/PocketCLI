@@ -48,8 +48,6 @@ sealed interface InstallState {
     data class Failed(val error: String, val canRetry: Boolean) : InstallState
 }
 
-typealias InstallerState = InstallState
-
 @Singleton
 open class RuntimeInstaller(
     private val prootEnvironment: ProotEnvironment,

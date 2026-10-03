@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pocketcli.core.security.ProviderKeyStore
 import com.pocketcli.data.local.db.ProfileDao
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
-import com.pocketcli.runtime.local.installer.InstallerState
+import com.pocketcli.runtime.local.installer.InstallState
 import com.pocketcli.runtime.local.installer.RuntimeInstaller
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeState
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeSupervisor
@@ -36,7 +36,7 @@ class LocalRuntimeViewModel @Inject constructor(
     private val connectionManager: ActiveConnectionManager
 ) : ViewModel() {
 
-    val installerState: StateFlow<InstallerState> = runtimeInstaller.state
+    val installerState: StateFlow<InstallState> = runtimeInstaller.state
     val supervisorState: StateFlow<LocalRuntimeState> = supervisor.state
     val logs: StateFlow<List<String>> = supervisor.logBuffer.linesFlow
 

@@ -11,12 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.pocketcli.runtime.local.installer.InstallerState
+import com.pocketcli.runtime.local.installer.InstallState
 import com.pocketcli.runtime.local.supervisor.LocalRuntimeState
 
 @Composable
 fun LocalRuntimeCard(
-    installerState: InstallerState,
+    installerState: InstallState,
     supervisorState: LocalRuntimeState,
     isLocalActive: Boolean,
     onInstall: () -> Unit,
@@ -84,7 +84,7 @@ fun LocalRuntimeCard(
 
             // Status indication
             when (installerState) {
-                is InstallerState.NotInstalled -> {
+                InstallState.NotInstalled -> {
                     Text(
                         text = "Рантайм не установлен. Нажмите «Установить» для автономной работы.",
                         style = MaterialTheme.typography.bodySmall,
@@ -101,12 +101,12 @@ fun LocalRuntimeCard(
                     }
                 }
 
-                is InstallerState.CheckingPrerequisites -> {
+                InstallState.CheckingPrerequisites -> {
                     StatusRow(text = "Проверка диска и архитектуры...")
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 }
 
-                is InstallerState.Downloading -> {
+                is InstallState.Downloading -> {
                     val mbDownloaded = installerState.downloadedBytes / (1024 * 1024)
                     val mbTotal = installerState.totalBytes / (1024 * 1024)
                     StatusRow(text = "Скачивание rootfs: $mbDownloaded МБ / $mbTotal МБ (${(installerState.progress * 100).toInt()}%)")
@@ -116,22 +116,22 @@ fun LocalRuntimeCard(
                     )
                 }
 
-                is InstallerState.Verifying -> {
+                is InstallState.Verifying -> {
                     StatusRow(text = "Проверка контрольной суммы SHA-256...")
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 }
 
-                is InstallerState.Extracting -> {
+                is InstallState.Extracting -> {
                     StatusRow(text = "Распаковка rootfs...")
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 }
 
-                is InstallerState.Configuring -> {
+                is InstallState.Configuring -> {
                     StatusRow(text = "Настройка окружения и DNS...")
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 }
 
-                is InstallerState.Failed -> {
+                is InstallState.Failed -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -147,7 +147,7 @@ fun LocalRuntimeCard(
                     }
                 }
 
-                is InstallerState.Ready -> {
+                is InstallState.Ready -> {
                     // Ready: show supervisor state
                     when (supervisorState) {
                         is LocalRuntimeState.Stopped -> {
@@ -205,7 +205,7 @@ fun LocalRuntimeCard(
                                 Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Сбой: ${supervisorState.reason}",
+                                    text = "Сбой: ${supervisorState.error}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -225,7 +225,7 @@ fun LocalRuntimeCard(
             }
 
             // Bottom action row: Logs & Provider Keys
-            if (installerState is InstallerState.Ready) {
+            if (installerState is InstallState.Ready) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
