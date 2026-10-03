@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pocketcli.core.model.Session
 import java.text.SimpleDateFormat
@@ -31,7 +32,18 @@ fun SessionsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Agent Sessions") }
+                title = {
+                    Column {
+                        Text("Agent Sessions")
+                        if (uiState.activeProfileName.isNotEmpty()) {
+                            Text(
+                                text = "Profile: ${uiState.activeProfileName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -49,10 +61,18 @@ fun SessionsScreen(
             if (uiState.sessions.isEmpty()) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
                 ) {
+                    val promptText = if (uiState.activeProfileId.isEmpty()) {
+                        "No active server profile.\nGo to Settings to configure your OpenCode server."
+                    } else {
+                        "No sessions yet for \"${uiState.activeProfileName}\".\nTap + to start a new chat."
+                    }
                     Text(
-                        text = "No active sessions.\nTap + to start a new chat.",
+                        text = promptText,
+                        textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -79,20 +99,29 @@ fun SessionsScreen(
                 onDismissRequest = { viewModel.dismissCreateDialog() },
                 title = { Text("New Session") },
                 text = {
-                    OutlinedTextField(
-                        value = uiState.newSessionTitle,
-                        onValueChange = { viewModel.onNewSessionTitleChange(it) },
-                        label = { Text("Session Title") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = uiState.newSessionTitle,
+                            onValueChange = { viewModel.onNewSessionTitleChange(it) },
+                            label = { Text("Session Title") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        uiState.errorMessage?.let { error ->
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 },
                 confirmButton = {
                     Button(
                         onClick = { viewModel.createSession { onSessionClick(it) } },
                         enabled = !uiState.isCreatingSession
                     ) {
-                        Text("Create")
+                        Text(if (uiState.isCreatingSession) "Creating..." else "Create")
                     }
                 },
                 dismissButton = {

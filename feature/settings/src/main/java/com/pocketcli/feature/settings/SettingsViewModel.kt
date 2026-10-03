@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.opencode.api.CleartextHttpPolicyInterceptor
 import com.pocketcli.data.opencode.api.OpenCodeApiClient
+import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.data.opencode.db.ProfileDao
 import com.pocketcli.data.opencode.db.ConnectionProfileEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,7 +31,8 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val profileDao: ProfileDao,
-    private val secretStore: SecretStore
+    private val secretStore: SecretStore,
+    private val activeConnectionManager: ActiveConnectionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -40,19 +42,24 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             profileDao.getAll().collect { list ->
                 _uiState.update { current ->
-                    val activeId = if (current.activeProfileId.isEmpty() && list.isNotEmpty()) {
-                        list.first().id
-                    } else {
-                        current.activeProfileId
-                    }
-                    current.copy(profiles = list, activeProfileId = activeId)
+                    current.copy(profiles = list)
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            activeConnectionManager.activeProfile.collect { active ->
+                _uiState.update { it.copy(activeProfileId = active?.id.orEmpty()) }
             }
         }
     }
 
     fun selectActiveProfile(id: String) {
-        _uiState.update { it.copy(activeProfileId = id) }
+        viewModelScope.launch {
+            val profile = profileDao.getById(id) ?: return@launch
+            activeConnectionManager.setActiveProfile(profile)
+            _uiState.update { it.copy(activeProfileId = id) }
+        }
     }
 
     fun openAddDialog() {
@@ -119,6 +126,7 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             profileDao.upsert(profile)
+            activeConnectionManager.setActiveProfile(profile)
             _uiState.update { it.copy(showAddDialog = false, activeProfileId = profile.id) }
         }
     }

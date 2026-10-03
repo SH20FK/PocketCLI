@@ -20,6 +20,9 @@ interface ProfileDao {
     @Query("SELECT * FROM connection_profiles ORDER BY lastConnectedAt DESC")
     fun getAll(): Flow<List<ConnectionProfileEntity>>
 
+    @Query("SELECT * FROM connection_profiles ORDER BY lastConnectedAt DESC")
+    suspend fun getAllList(): List<ConnectionProfileEntity>
+
     @Query("SELECT * FROM connection_profiles WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ConnectionProfileEntity?
 

@@ -16,6 +16,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import com.pocketcli.core.ui.theme.PocketCLITheme
+import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.feature.chat.ChatScreen
 import com.pocketcli.feature.chat.ChatViewModel
 import com.pocketcli.feature.sessions.SessionsScreen
@@ -43,9 +44,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             PocketCLITheme {
                 val navController = rememberNavController()
-                val currentBackStack by navController.currentBackStackEntryAsState()
-                val currentDestination = currentBackStack?.destination?.route
-
                 var selectedTab by remember { mutableIntStateOf(0) }
 
                 NavigationSuiteScaffold(
@@ -81,13 +79,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable<SessionsRoute> {
                             val viewModel: SessionsViewModel = hiltViewModel()
-                            val adapter = connectionManager.getAdapter()
-                            val activeProfile by connectionManager.activeProfile.collectAsState()
-
-                            LaunchedEffect(activeProfile?.id) {
-                                viewModel.initialize(activeProfile?.id ?: "default_local", adapter)
-                            }
-
                             SessionsScreen(
                                 viewModel = viewModel,
                                 onSessionClick = { sessionId ->
@@ -99,15 +90,9 @@ class MainActivity : ComponentActivity() {
                         composable<ChatRoute> { backStackEntry ->
                             val route = backStackEntry.toRoute<ChatRoute>()
                             val viewModel: ChatViewModel = hiltViewModel()
-                            val adapter = connectionManager.getAdapter()
-                            val activeProfile by connectionManager.activeProfile.collectAsState()
 
                             LaunchedEffect(route.sessionId) {
-                                viewModel.initialize(
-                                    profileId = activeProfile?.id ?: "default_local",
-                                    sessionId = route.sessionId,
-                                    adapter = adapter
-                                )
+                                viewModel.initialize(sessionId = route.sessionId)
                             }
 
                             ChatScreen(
