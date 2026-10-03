@@ -197,18 +197,19 @@ fun SettingsScreen(
         if (runtimeUiState.showLogsDialog) {
             LogViewerDialog(
                 logs = logs,
-                onDismiss = { runtimeViewModel.closeLogsDialog() },
-                onClear = { runtimeViewModel.clearLogs() }
+                filterQuery = runtimeUiState.logFilterQuery,
+                onFilterChange = { runtimeViewModel.updateLogFilter(it) },
+                onClearLogs = { runtimeViewModel.clearLogs() },
+                onDismiss = { runtimeViewModel.dismissLogsDialog() }
             )
         }
 
         // Provider API Keys Dialog
-        if (runtimeUiState.showKeysDialog) {
+        if (runtimeUiState.showProviderKeysDialog) {
             ProviderKeysDialog(
-                providerKeys = providerKeys,
+                currentKeys = providerKeys,
                 onSaveKey = { prov, key -> runtimeViewModel.saveProviderKey(prov, key) },
-                onRemoveKey = { prov -> runtimeViewModel.removeProviderKey(prov) },
-                onDismiss = { runtimeViewModel.closeProviderKeysDialog() }
+                onDismiss = { runtimeViewModel.dismissProviderKeysDialog() }
             )
         }
     }
@@ -289,7 +290,7 @@ fun AddProfileDialog(
         confirmButton = {
             Button(
                 onClick = onSave,
-                enabled = uiState.draftName.isNotBlank() && uiState.draftUrl.isNotBlank() && !uiState.isTesting
+                enabled = uiState.draftName.isNotBlank() && uiState.draftUrl.isNotBlank() && !uiState.isTestingConnection
             ) {
                 Text("Сохранить")
             }
@@ -349,21 +350,21 @@ fun AddProfileDialog(
 
             Button(
                 onClick = onTest,
-                enabled = uiState.draftUrl.isNotBlank() && !uiState.isTesting,
+                enabled = uiState.draftUrl.isNotBlank() && !uiState.isTestingConnection,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (uiState.isTesting) {
+                if (uiState.isTestingConnection) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 Text("Проверить подключение")
             }
 
-            uiState.testResult?.let { res ->
+            uiState.testConnectionStatus?.let { res ->
                 Text(
                     text = res,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (res.startsWith("Успешно")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    color = if (res.startsWith("Success") || res.startsWith("Успешно")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
         }

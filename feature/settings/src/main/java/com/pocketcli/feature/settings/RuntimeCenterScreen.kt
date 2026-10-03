@@ -15,12 +15,12 @@ import androidx.compose.ui.unit.dp
 import com.pocketcli.core.ui.components.AgentActivityState
 import com.pocketcli.core.ui.components.PocketStatusPill
 import com.pocketcli.core.ui.theme.ToolSuccessColor
-import com.pocketcli.runtime.local.supervisor.SupervisorState
+import com.pocketcli.runtime.local.supervisor.LocalRuntimeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RuntimeCenterScreen(
-    supervisorState: SupervisorState,
+    supervisorState: LocalRuntimeState,
     onNavigateBack: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
@@ -29,7 +29,7 @@ fun RuntimeCenterScreen(
     onOpenKeys: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRunning = supervisorState is SupervisorState.Running
+    val isRunning = supervisorState is LocalRuntimeState.Running
 
     Scaffold(
         topBar = {
@@ -80,9 +80,10 @@ fun RuntimeCenterScreen(
                                     text = if (isRunning) "Локальный рантайм активен" else "Рантайм остановлен",
                                     style = MaterialTheme.typography.titleLarge
                                 )
-                                if (supervisorState is SupervisorState.Running) {
+                                if (supervisorState is LocalRuntimeState.Running) {
+                                    val uptimeSeconds = (System.currentTimeMillis() - supervisorState.startedAt) / 1000
                                     Text(
-                                        text = "Порт: ${supervisorState.port} · Uptime: ${supervisorState.uptimeSeconds}s",
+                                        text = "Порт: ${supervisorState.port} · Uptime: ${uptimeSeconds}s",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

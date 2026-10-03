@@ -260,7 +260,7 @@ fun UpdateScreen(
                                 Button(
                                     onClick = {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES_SPECIFIC_KEYS).apply {
+                                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                                                 data = Uri.parse("package:${context.packageName}")
                                             }
                                             context.startActivity(intent)
