@@ -34,7 +34,7 @@ jobs:
         run: chmod +x gradlew || true
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --stacktrace --info
+        run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Upload Test Reports
         if: always()
