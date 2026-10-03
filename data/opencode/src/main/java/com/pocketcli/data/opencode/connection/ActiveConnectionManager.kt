@@ -22,6 +22,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import com.pocketcli.core.security.AntigravityAuthManager
+import com.pocketcli.data.local.db.AppDatabase
+import com.pocketcli.data.opencode.antigravity.AntigravityAdapter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,13 +32,28 @@ import javax.inject.Singleton
 class ActiveConnectionManager(
     private val profileDao: ProfileDao,
     private val secretStore: SecretStore,
+    private val antigravityAuthManager: AntigravityAuthManager? = null,
+    private val database: AppDatabase? = null,
     coroutineScope: CoroutineScope? = null
 ) {
     @Inject
     constructor(
         profileDao: ProfileDao,
+        secretStore: SecretStore,
+        antigravityAuthManager: AntigravityAuthManager,
+        database: AppDatabase
+    ) : this(profileDao, secretStore, antigravityAuthManager, database, null)
+
+    constructor(
+        profileDao: ProfileDao,
         secretStore: SecretStore
-    ) : this(profileDao, secretStore, null)
+    ) : this(profileDao, secretStore, null, null, null)
+
+    constructor(
+        profileDao: ProfileDao,
+        secretStore: SecretStore,
+        coroutineScope: CoroutineScope?
+    ) : this(profileDao, secretStore, null, null, coroutineScope)
 
     private val scope = coroutineScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _activeProfile = MutableStateFlow<ConnectionProfileEntity?>(null)
@@ -130,11 +148,30 @@ class ActiveConnectionManager(
     }
 
     fun getAdapterFor(agentType: AgentType): AgentAdapter? {
-        val baseAdapter = getOpenCodeAdapter() ?: return null
+        val baseAdapter = getOpenCodeAdapter()
         val profileId = _activeProfile.value?.id.orEmpty()
         return when (agentType) {
             AgentType.OPENCODE -> baseAdapter
-            AgentType.CLAUDE_CODE, AgentType.ANTIGRAVITY, AgentType.CODEX -> {
+            AgentType.ANTIGRAVITY -> {
+                if (antigravityAuthManager != null) {
+                    AntigravityAdapter(
+                        authManager = antigravityAuthManager,
+                        database = database,
+                        profileId = profileId.ifEmpty { "default_antigravity" },
+                        underlyingAdapter = baseAdapter
+                    )
+                } else if (baseAdapter != null) {
+                    AcpAdapter(
+                        agentType = agentType,
+                        profileId = profileId,
+                        underlyingAdapter = baseAdapter
+                    )
+                } else {
+                    null
+                }
+            }
+            AgentType.CLAUDE_CODE, AgentType.CODEX -> {
+                if (baseAdapter == null) return null
                 AcpAdapter(
                     agentType = agentType,
                     profileId = profileId,
@@ -148,8 +185,16 @@ class ActiveConnectionManager(
     fun getAdapter(): AgentAdapter? {
         val profile = _activeProfile.value ?: runBlocking(Dispatchers.IO) {
             profileDao.getAllList().firstOrNull()
-        } ?: return null
-        val agentType = AgentType.fromId(profile.agentType)
+        }
+        val agentType = if (profile != null) {
+            AgentType.fromId(profile.agentType)
+        } else {
+            if (antigravityAuthManager?.state?.value?.isAuthenticated == true) {
+                AgentType.ANTIGRAVITY
+            } else {
+                AgentType.OPENCODE
+            }
+        }
         return getAdapterFor(agentType)
     }
 }

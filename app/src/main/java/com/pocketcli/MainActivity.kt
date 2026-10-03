@@ -36,6 +36,10 @@ import com.pocketcli.feature.settings.SettingsScreen
 import com.pocketcli.feature.settings.SettingsViewModel
 import com.pocketcli.feature.settings.update.UpdateScreen
 import com.pocketcli.feature.settings.update.UpdateViewModel
+import android.content.Intent
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import com.pocketcli.core.security.AntigravityAuthManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -57,9 +61,13 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionRepository: AgentSessionRepository
 
+    @Inject
+    lateinit var antigravityAuthManager: AntigravityAuthManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleDeepLink(intent)
 
         setContent {
             PocketCLITheme {
@@ -234,6 +242,29 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme == "pocketcli" && uri.host == "auth") {
+            val code = uri.getQueryParameter("code")
+            if (!code.isNullOrEmpty()) {
+                lifecycleScope.launch {
+                    val result = antigravityAuthManager.exchangeAuthCode(code)
+                    if (result.isSuccess) {
+                        Toast.makeText(this@MainActivity, "Авторизация Google Antigravity успешна!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Ошибка авторизации: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }

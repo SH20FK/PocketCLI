@@ -2,6 +2,9 @@ package com.pocketcli.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pocketcli.core.security.AntigravityAuthManager
+import com.pocketcli.core.security.AntigravityAuthState
+import com.pocketcli.core.security.DeviceAuthCode
 import com.pocketcli.core.security.ProviderKeyStore
 import com.pocketcli.data.local.db.ProfileDao
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
@@ -35,12 +38,16 @@ class LocalRuntimeViewModel @Inject constructor(
     private val supervisor: LocalRuntimeSupervisor,
     private val providerKeyStore: ProviderKeyStore,
     private val profileDao: ProfileDao,
-    private val connectionManager: ActiveConnectionManager
+    private val connectionManager: ActiveConnectionManager,
+    private val antigravityAuthManager: AntigravityAuthManager? = null
 ) : ViewModel() {
 
     val installerState: StateFlow<InstallState> = runtimeInstaller.state
     val supervisorState: StateFlow<LocalRuntimeState> = supervisor.state
     val logs: StateFlow<List<String>> = supervisor.logBuffer.linesFlow
+
+    val antigravityAuthState: StateFlow<AntigravityAuthState> = antigravityAuthManager?.state
+        ?: MutableStateFlow(AntigravityAuthState()).asStateFlow()
 
     val providerKeys: StateFlow<Map<String, String>> = providerKeyStore.keysFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
@@ -179,5 +186,41 @@ class LocalRuntimeViewModel @Inject constructor(
                 connectionManager.setActiveProfile(profile)
             }
         }
+    }
+
+    fun startAntigravityDeviceAuth(onResult: (Result<DeviceAuthCode>) -> Unit) {
+        viewModelScope.launch {
+            if (antigravityAuthManager != null) {
+                val res = antigravityAuthManager.startDeviceAuth()
+                onResult(res)
+            } else {
+                onResult(Result.failure(IllegalStateException("AntigravityAuthManager недоступен")))
+            }
+        }
+    }
+
+    fun pollAntigravityDeviceToken(deviceCode: String, onResult: (Result<Boolean>) -> Unit) {
+        viewModelScope.launch {
+            if (antigravityAuthManager != null) {
+                val res = antigravityAuthManager.pollDeviceToken(deviceCode)
+                onResult(res)
+            } else {
+                onResult(Result.failure(IllegalStateException("AntigravityAuthManager недоступен")))
+            }
+        }
+    }
+
+    fun setAntigravityApiKey(rawKey: String) {
+        antigravityAuthManager?.setApiKey(rawKey)
+        saveProviderKey("GEMINI_API_KEY", rawKey)
+    }
+
+    fun setAntigravitySelectedModel(model: String) {
+        antigravityAuthManager?.setSelectedModel(model)
+    }
+
+    fun logoutAntigravity() {
+        antigravityAuthManager?.logout()
+        removeProviderKey("GEMINI_API_KEY")
     }
 }

@@ -39,6 +39,7 @@ fun SettingsScreen(
     val supervisorState by runtimeViewModel.supervisorState.collectAsState()
     val logs by runtimeViewModel.logs.collectAsState()
     val providerKeys by runtimeViewModel.providerKeys.collectAsState()
+    val antigravityAuthState by runtimeViewModel.antigravityAuthState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -150,7 +151,8 @@ fun SettingsScreen(
                     onConfigureCodex = { runtimeViewModel.openProviderKeysDialog() },
                     hasAnthropicKey = !providerKeys["ANTHROPIC_API_KEY"].isNullOrBlank(),
                     hasGeminiKey = !providerKeys["GEMINI_API_KEY"].isNullOrBlank(),
-                    hasOpenAiKey = !providerKeys["OPENAI_API_KEY"].isNullOrBlank()
+                    hasOpenAiKey = !providerKeys["OPENAI_API_KEY"].isNullOrBlank(),
+                    isAntigravityAuthenticated = antigravityAuthState.isAuthenticated
                 )
             }
 
@@ -233,8 +235,13 @@ fun SettingsScreen(
         // Gemini / Antigravity Config Dialog
         if (runtimeUiState.showAntigravityDialog) {
             AntigravityConfigDialog(
+                authState = antigravityAuthState,
                 currentApiKey = providerKeys["GEMINI_API_KEY"].orEmpty(),
-                onSaveKey = { runtimeViewModel.saveProviderKey("GEMINI_API_KEY", it) },
+                onStartDeviceAuth = { cb -> runtimeViewModel.startAntigravityDeviceAuth(cb) },
+                onPollDeviceToken = { code, cb -> runtimeViewModel.pollAntigravityDeviceToken(code, cb) },
+                onSaveKey = { runtimeViewModel.setAntigravityApiKey(it) },
+                onSelectModel = { runtimeViewModel.setAntigravitySelectedModel(it) },
+                onLogout = { runtimeViewModel.logoutAntigravity() },
                 onDismiss = { runtimeViewModel.dismissAntigravityDialog() }
             )
         }

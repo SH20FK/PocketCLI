@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 object MarkdownSanitizer {
     /**
@@ -46,19 +47,13 @@ fun StreamingMarkdownText(
     modifier: Modifier = Modifier
 ) {
     var throttledContent by remember { mutableStateOf(markdown) }
-    var lastUpdateTime by remember { mutableLongStateOf(0L) }
 
     if (isStreaming) {
-        LaunchedEffect(markdown) {
-            val now = System.currentTimeMillis()
-            val elapsed = now - lastUpdateTime
-            if (elapsed >= 200L) {
+        // Continuous sampling loop: updates UI at a calm, predictable 250ms cadence during fast generation
+        LaunchedEffect(Unit) {
+            while (isActive) {
                 throttledContent = markdown
-                lastUpdateTime = now
-            } else {
-                delay(200L - elapsed)
-                throttledContent = markdown
-                lastUpdateTime = System.currentTimeMillis()
+                delay(250L)
             }
         }
     } else {

@@ -185,7 +185,7 @@ class AgentSessionRepository @Inject constructor(
 
         return combine(combinedDbFlow, inFlightMessages) { dbMessages, inFlightMap ->
             val inFlight = inFlightMap[sessionId]
-            if (inFlight != null) {
+            val list = if (inFlight != null) {
                 // If message is in-flight and not yet in DB, append it to the tail
                 if (dbMessages.none { it.id == inFlight.id }) {
                     dbMessages + inFlight.toMessage()
@@ -196,6 +196,7 @@ class AgentSessionRepository @Inject constructor(
             } else {
                 dbMessages
             }
+            list.distinctBy { it.id }
         }
     }
 

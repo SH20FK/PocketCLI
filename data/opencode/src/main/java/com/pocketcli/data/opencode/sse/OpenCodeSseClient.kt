@@ -22,9 +22,10 @@ class OpenCodeSseClient(
         isLenient = true
     }
 ) {
-    // Dedicated OkHttpClient with readTimeout(0) required for Server-Sent Events
+    // Dedicated OkHttpClient with readTimeout(0) and pingInterval for persistent Server-Sent Events
     private val sseHttpClient: OkHttpClient = baseOkHttpClient.newBuilder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(15, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 

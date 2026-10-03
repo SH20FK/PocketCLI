@@ -337,7 +337,7 @@ open class LocalRuntimeSupervisor(
                 return false
             }
 
-            val health = queryHealth(port, token)
+            val health = queryHealth(port, token, logError = false)
             if (health.isSuccess && health.getOrNull()?.healthy == true) {
                 return true
             }
@@ -346,7 +346,7 @@ open class LocalRuntimeSupervisor(
         return false
     }
 
-    private fun queryHealth(port: Int, token: String): Result<HealthInfo> {
+    private fun queryHealth(port: Int, token: String, logError: Boolean = true): Result<HealthInfo> {
         val url = "http://$host:$port/global/health"
         val request = Request.Builder()
             .url(url)
@@ -364,7 +364,9 @@ open class LocalRuntimeSupervisor(
                 }
             }
         } catch (e: Exception) {
-            logBuffer.append("[Supervisor] Health-check call error: ${e.message}")
+            if (logError) {
+                logBuffer.append("[Supervisor] Health-check call error: ${e.message}")
+            }
             Result.failure(e)
         }
     }

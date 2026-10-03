@@ -57,6 +57,7 @@ fun AgentCardsList(
     hasAnthropicKey: Boolean,
     hasGeminiKey: Boolean,
     hasOpenAiKey: Boolean,
+    isAntigravityAuthenticated: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val agents = listOf(
@@ -90,7 +91,7 @@ fun AgentCardsList(
             isSupported = true,
             version = "ACP v1.0",
             description = "Google DeepMind Advanced Agentic Coding агент с контекстным окном до 2M токенов",
-            isConfigured = hasGeminiKey,
+            isConfigured = hasGeminiKey || isAntigravityAuthenticated,
             onConfigure = onConfigureAntigravity
         ),
         AgentSpec(
@@ -140,7 +141,11 @@ fun AgentCardsList(
 
                         if (agent.isSupported) {
                             val badgeColor = if (agent.isConfigured) ToolSuccessColor else MaterialTheme.colorScheme.primary
-                            val badgeText = if (agent.isConfigured) "Активен" else "Готов"
+                            val badgeText = when {
+                                agent.type == AgentType.ANTIGRAVITY && isAntigravityAuthenticated -> "Google OAuth"
+                                agent.isConfigured -> "Активен"
+                                else -> "Готов"
+                            }
 
                             Surface(
                                 shape = RoundedCornerShape(8.dp),

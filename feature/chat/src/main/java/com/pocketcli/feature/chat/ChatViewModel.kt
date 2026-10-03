@@ -8,6 +8,8 @@ import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.data.opencode.repository.AgentSessionRepository
 import com.pocketcli.feature.chat.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,12 +24,18 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var activeAdapter: AgentAdapter? = null
+    private var sessionJob: Job? = null
 
     fun initialize(sessionId: String, profileId: String? = null, adapter: AgentAdapter? = null) {
         val effectiveAdapter = adapter ?: connectionManager.getAdapter()
         activeAdapter = effectiveAdapter
 
-        viewModelScope.launch {
+        if (_uiState.value.sessionId == sessionId && sessionJob?.isActive == true) {
+            return
+        }
+        sessionJob?.cancel()
+
+        sessionJob = viewModelScope.launch {
             val resolvedProfileId = profileId?.takeIf { it.isNotEmpty() }
                 ?: connectionManager.activeProfile.value?.id
                 ?: repository.getProfileIdForSession(sessionId)
@@ -37,6 +45,9 @@ class ChatViewModel @Inject constructor(
             val session = repository.getSession(resolvedProfileId, sessionId)
             val title = session?.title?.ifBlank { "Чат сессии" } ?: "Чат сессии"
             val agentType = session?.agentType ?: AgentType.OPENCODE
+
+            val targetAdapter = adapter ?: connectionManager.getAdapterFor(agentType) ?: effectiveAdapter
+            activeAdapter = targetAdapter
 
             _uiState.update { current ->
                 val nextState = current.copy(
@@ -59,18 +70,18 @@ class ChatViewModel @Inject constructor(
  }
  }
 
- // 2. Load available models from the server
- launch {
- effectiveAdapter?.getModels()?.onSuccess { models ->
- _uiState.update { current ->
- val nextState = current.copy(availableModels = models)
- syncNodesAndComposer(nextState)
- }
- }
- }
+        // 2. Load available models from the server
+        launch {
+            targetAdapter?.getModels()?.onSuccess { models ->
+                _uiState.update { current ->
+                    val nextState = current.copy(availableModels = models)
+                    syncNodesAndComposer(nextState)
+                }
+            }
+        }
 
         // 3. Reconcile existing server messages if available
-        val openCodeAdapter = effectiveAdapter as? OpenCodeAdapter
+        val openCodeAdapter = targetAdapter as? OpenCodeAdapter
         val apiClient = openCodeAdapter?.apiClient
         if (apiClient != null && resolvedProfileId.isNotEmpty()) {
             launch {
@@ -89,19 +100,33 @@ class ChatViewModel @Inject constructor(
             }
         }
 
- // 4. Observe SSE events for this session
- if (effectiveAdapter != null) {
- launch {
- effectiveAdapter.events(sessionId).collect { event ->
- repository.handleAgentEvent(resolvedProfileId, sessionId, event)
+        // 4. Observe SSE events for this session with automatic retry and crash protection
+        if (targetAdapter != null) {
+            launch {
+                targetAdapter.events(sessionId)
+                    .retryWhen { _, attempt ->
+                        delay(minOf(1000L * (attempt + 1), 5000L))
+                        true
+                    }
+                    .catch { /* Stream closed cleanly without crashing */ }
+                    .collect { event ->
+                        repository.handleAgentEvent(resolvedProfileId, sessionId, event)
 
- when (event) {
- is AgentEvent.SessionStatus -> {
- _uiState.update { current ->
- val nextState = current.copy(sessionState = event.state)
- syncNodesAndComposer(nextState)
- }
- }
+                        when (event) {
+                            is AgentEvent.SessionStatus -> {
+                                _uiState.update { current ->
+                                    val nextState = current.copy(sessionState = event.state)
+                                    syncNodesAndComposer(nextState)
+                                }
+                                if (event.state == SessionState.IDLE) {
+                                    val client = (targetAdapter as? OpenCodeAdapter)?.apiClient
+                                    if (client != null && resolvedProfileId.isNotEmpty()) {
+                                        launch {
+                                            repository.reconcile(client, resolvedProfileId, sessionId)
+                                        }
+                                    }
+                                }
+                            }
  is AgentEvent.PermissionRequested -> {
  _uiState.update { current ->
  val nextState = current.copy(pendingPermission = event)
@@ -272,18 +297,8 @@ class ChatViewModel @Inject constructor(
  }
  return@launch
  }
-
-        // 3. Reconcile with server to guarantee response is stored even if SSE dropped
-        val openCodeAdapter = adapter as? OpenCodeAdapter
-        val apiClient = openCodeAdapter?.apiClient
-        if (apiClient != null && state.profileId.isNotEmpty()) {
-            repository.reconcile(apiClient, state.profileId, state.sessionId)
+            // The prompt was sent successfully; session remains in BUSY state until SessionStatus.IDLE arrives via SSE
         }
- _uiState.update { current ->
- val nextState = current.copy(sessionState = SessionState.IDLE)
- syncNodesAndComposer(nextState)
- }
- }
  }
 
  fun dismissError() {
@@ -336,18 +351,21 @@ class ChatViewModel @Inject constructor(
  return key
  }
 
- for (msg in state.messages) {
- if (msg.role == MessageRole.USER) {
- if (msg.text.isNotBlank()) {
- nodes.add(ChatNode.UserNode(id = uniqueKey("user", msg.id), text = msg.text, timestamp = msg.timestamp))
- }
- } else {
- nodes.add(ChatNode.AssistantNode(id = uniqueKey("asst", msg.id), message = msg, isStreaming = false))
- for (tool in msg.toolCalls) {
- nodes.add(ChatNode.ToolNode(id = uniqueKey("tool", tool.callId), toolCall = tool))
- }
- }
- }
+        val lastMsgId = state.messages.lastOrNull()?.id
+        val isBusy = state.sessionState == SessionState.BUSY
+        for (msg in state.messages) {
+            if (msg.role == MessageRole.USER) {
+                if (msg.text.isNotBlank()) {
+                    nodes.add(ChatNode.UserNode(id = uniqueKey("user", msg.id), text = msg.text, timestamp = msg.timestamp))
+                }
+            } else {
+                val isThisStreaming = isBusy && (msg.id == state.streamingTail?.messageId || msg.id == lastMsgId)
+                nodes.add(ChatNode.AssistantNode(id = uniqueKey("asst", msg.id), message = msg, isStreaming = isThisStreaming))
+                for (tool in msg.toolCalls) {
+                    nodes.add(ChatNode.ToolNode(id = uniqueKey("tool", tool.callId), toolCall = tool))
+                }
+            }
+        }
 
  state.activeDiffFile?.let { (path, diff) ->
  nodes.add(ChatNode.DiffNode(id = uniqueKey("diff", path), filePath = path, diffContent = diff))
