@@ -1,4 +1,4 @@
-﻿package com.pocketcli.core.ui.components
+package com.pocketcli.core.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
@@ -20,12 +20,12 @@ object MarkdownSanitizer {
         val lines = raw.lines()
         for (line in lines) {
             val trimmed = line.trimStart()
-            if (trimmed.startsWith(`)) {
+            if (trimmed.startsWith("```")) {
                 inCodeBlock = !inCodeBlock
             }
         }
         return if (inCodeBlock) {
-            \n`
+            "$raw\n```"
         } else {
             raw
         }

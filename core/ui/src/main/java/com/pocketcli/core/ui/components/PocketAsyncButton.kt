@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pocketcli.core.ui.theme.LocalPocketMotionScheme
 import com.pocketcli.core.ui.theme.PocketCLITheme
+import com.pocketcli.core.ui.theme.PocketMotion
 import com.pocketcli.core.ui.theme.PocketShapes
 import com.pocketcli.core.ui.theme.PocketSpacing
 import com.pocketcli.core.ui.theme.ToolSuccessColor
@@ -53,7 +54,7 @@ fun PocketAsyncButton(
             AsyncActionState.Success -> ToolSuccessColor
             is AsyncActionState.Error -> MaterialTheme.colorScheme.error
         },
-        animationSpec = motion.standard,
+        animationSpec = PocketMotion.standard(),
         label = "AsyncButtonContainerColor"
     )
 
@@ -63,7 +64,7 @@ fun PocketAsyncButton(
             AsyncActionState.Success -> Color.White
             is AsyncActionState.Error -> MaterialTheme.colorScheme.onError
         },
-        animationSpec = motion.standard,
+        animationSpec = PocketMotion.standard(),
         label = "AsyncButtonContentColor"
     )
 
