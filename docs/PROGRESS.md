@@ -26,3 +26,6 @@
 ## Проверенные устройства и среды:
 - Windows 11 (Host machine, OpenCode serve 1.2.27).
 - GitHub Actions Ubuntu Latest (CI/CD pipeline).
+  - **Run #10**: [SH20FK/PocketCLI Actions Run 37099966772](https://github.com/SH20FK/PocketCLI/actions/runs/37099966772) — **STATUS: SUCCESS** (Unit Tests & APK Assemble passed).
+  - **Artifact 1**: pocketcli-debug-apk (15.9 MB, SHA256: 46281a899e7d8bc87cd09067ffa05c292a0d3d28558b2c51673b6fc2e5394ebe).
+  - **Artifact 2**: test-reports (7.26 KB, SHA256: 277b8c25491b07a33ca9316468753eeb9585098cd799eb12a07e9a6ea5ee7cb5).
