@@ -186,11 +186,16 @@ class ManifestParserTest {
 
     @Test
     fun testParseProductionAssetManifest() {
-        val assetFile = listOf(
-            File("../../app/src/main/assets/local-runtime-manifest.json"),
-            File("../app/src/main/assets/local-runtime-manifest.json"),
-            File("app/src/main/assets/local-runtime-manifest.json")
-        ).find { it.exists() }
+        var current: File? = File(".").canonicalFile
+        var assetFile: File? = null
+        while (current != null) {
+            val candidate = File(current, "app/src/main/assets/local-runtime-manifest.json")
+            if (candidate.exists()) {
+                assetFile = candidate
+                break
+            }
+            current = current.parentFile
+        }
 
         assertNotNull("Production local-runtime-manifest.json asset file must exist", assetFile)
         val json = assetFile!!.readText(Charsets.UTF_8)

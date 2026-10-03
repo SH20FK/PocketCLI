@@ -2,6 +2,7 @@ package com.pocketcli.feature.sessions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pocketcli.core.model.AgentType
 import com.pocketcli.core.model.Session
 import com.pocketcli.core.model.Workspace
 import com.pocketcli.core.model.WorkspaceWithDetails
