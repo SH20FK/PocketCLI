@@ -10,6 +10,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -57,11 +58,16 @@ class OpenCodeApiClient(
         runCatching {
             val body = json.encodeToString(OpenCodeCreateSessionRequest(title = title))
                 .toRequestBody(jsonMediaType)
-            val baseHttpUrl = buildUrl("/session")
+            val rawUrl = buildUrl("/session")
             val targetUrl = if (!directory.isNullOrBlank()) {
-                baseHttpUrl.newBuilder().addQueryParameter("directory", directory).build()
+                val httpUrl = rawUrl.toHttpUrlOrNull()
+                if (httpUrl != null) {
+                    httpUrl.newBuilder().addQueryParameter("directory", directory).build().toString()
+                } else {
+                    "$rawUrl?directory=${java.net.URLEncoder.encode(directory, "UTF-8")}"
+                }
             } else {
-                baseHttpUrl
+                rawUrl
             }
             val request = Request.Builder()
                 .url(targetUrl)
