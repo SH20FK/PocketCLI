@@ -104,6 +104,10 @@ class RuntimeInstallerTest {
                 "x86_64": {
                     "rootfs": {"url":"http://localhost/r.tar.gz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100},
                     "opencode": {"url":"http://localhost/o.tgz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100}
+                },
+                "aarch64": {
+                    "rootfs": {"url":"http://localhost/r.tar.gz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100},
+                    "opencode": {"url":"http://localhost/o.tgz","sha256":"0000000000000000000000000000000000000000000000000000000000000000","sizeBytes":100}
                 }
             }
         }

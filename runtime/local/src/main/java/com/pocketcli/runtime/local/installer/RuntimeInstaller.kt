@@ -236,7 +236,7 @@ class RuntimeInstaller(
                 localBin.parentFile?.mkdirs()
                 try {
                     Files.deleteIfExists(localBin.toPath())
-                    Files.createSymbolicLink(localBin.toPath(), Paths.get("../bin/opencode"))
+                    Files.createSymbolicLink(localBin.toPath(), Paths.get("../../bin/opencode"))
                 } catch (_: Exception) {
                     targetBin.copyTo(localBin, overwrite = true)
                     localBin.setExecutable(true, false)
