@@ -5,6 +5,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
@@ -23,6 +25,7 @@ class OpenCodeApiClient(
         coerceInputValues = true
         isLenient = true
         explicitNulls = false
+        encodeDefaults = true
     }
 ) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -113,9 +116,17 @@ class OpenCodeApiClient(
     ): Result<OpenCodeReconcileMessageDto?> = withContext(Dispatchers.IO) {
         runCatching {
             val reqPayload = buildJsonObject {
-                put("parts", json.encodeToJsonElement(listOf(OpenCodeTextPartInput(type = "text", text = promptText))))
+                put("parts", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "text")
+                        put("text", promptText)
+                    })
+                })
                 if (model != null) {
-                    put("model", json.encodeToJsonElement(model))
+                    put("model", buildJsonObject {
+                        put("providerID", model.providerID)
+                        put("modelID", model.modelID)
+                    })
                 }
             }
             val body = reqPayload.toString().toRequestBody(jsonMediaType)

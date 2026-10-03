@@ -202,6 +202,7 @@ class OpenCodeAdapterTest {
         val recordedRequest = mockWebServer.takeRequest()
         val requestBody = recordedRequest.body.readUtf8()
         assertEquals("/session/ses_test_123/message", recordedRequest.path)
+        assertTrue("Request body must contain type discriminator", requestBody.contains("\"type\":\"text\""))
         assertTrue("Request body should contain text part", requestBody.contains("\"text\":\"Hello world\""))
         assertFalse("Request body must NOT contain null model field", requestBody.contains("\"model\""))
     }
@@ -220,6 +221,7 @@ class OpenCodeAdapterTest {
         val recordedRequest = mockWebServer.takeRequest()
         val requestBody = recordedRequest.body.readUtf8()
         assertEquals("/session/ses_test_123/message", recordedRequest.path)
+        assertTrue("Request body must contain type discriminator", requestBody.contains("\"type\":\"text\""))
         assertTrue("Request body should contain text part", requestBody.contains("\"text\":\"Hello world\""))
         assertTrue("Request body must contain model object", requestBody.contains("\"model\":{\"providerID\":\"opencode\",\"modelID\":\"claude-sonnet-4-6\"}"))
     }
