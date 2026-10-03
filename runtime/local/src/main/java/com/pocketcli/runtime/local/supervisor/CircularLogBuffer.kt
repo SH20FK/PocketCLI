@@ -8,9 +8,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CircularLogBuffer @Inject constructor(
-    val capacity: Int = 1000
+class CircularLogBuffer(
+    val capacity: Int
 ) {
+    @Inject
+    constructor() : this(capacity = 1000)
     private val lock = Any()
     private val buffer = ArrayDeque<String>(capacity)
     private val _linesFlow = MutableStateFlow<List<String>>(emptyList())
