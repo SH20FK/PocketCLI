@@ -14,7 +14,6 @@ class AntigravityAuthManagerTest {
     @Test
     fun testDefaultAuthStateUnauthenticated() {
         val authManager = AntigravityAuthManager(
-            context = null,
             secretStore = FakeSecretStore()
         )
 
@@ -28,7 +27,6 @@ class AntigravityAuthManagerTest {
     @Test
     fun testModelSelection() {
         val authManager = AntigravityAuthManager(
-            context = null,
             secretStore = FakeSecretStore()
         )
 
@@ -39,7 +37,6 @@ class AntigravityAuthManagerTest {
     @Test
     fun testLogoutResetsState() {
         val authManager = AntigravityAuthManager(
-            context = null,
             secretStore = FakeSecretStore()
         )
 

@@ -40,7 +40,6 @@ class AntigravityAdapterTest {
     fun testAntigravityModelsAndCapabilities() = runBlocking {
         val fakeSecret = FakeSecretStore()
         val authManager = object : AntigravityAuthManager(
-            context = null,
             secretStore = fakeSecret
         ) {
             override suspend fun getValidAccessToken(clientId: String): Result<String> {
@@ -73,7 +72,6 @@ class AntigravityAdapterTest {
     fun testAntigravityCancelAndDisconnect() = runBlocking {
         val fakeSecret = FakeSecretStore()
         val authManager = object : AntigravityAuthManager(
-            context = null,
             secretStore = fakeSecret
         ) {
             override suspend fun getValidAccessToken(clientId: String): Result<String> {

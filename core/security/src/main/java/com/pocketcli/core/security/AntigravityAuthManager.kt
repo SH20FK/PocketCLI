@@ -42,15 +42,20 @@ data class DeviceAuthCode(
 )
 
 @Singleton
-open class AntigravityAuthManager(
-    @ApplicationContext private val context: Context? = null,
-    private val secretStore: SecretStore? = null
+open class AntigravityAuthManager private constructor(
+    private val context: Context?,
+    private val secretStore: SecretStore?,
+    @Suppress("UNUSED_PARAMETER") marker: Unit?
 ) {
     @Inject
     constructor(
         @ApplicationContext context: Context,
         secretStore: SecretStore
-    ) : this(context as Context?, secretStore as SecretStore?)
+    ) : this(context, secretStore, null)
+
+    constructor(secretStore: SecretStore?) : this(null, secretStore, null)
+
+    constructor() : this(null, null, null)
 
     companion object {
         private const val PREFS_NAME = "pocketcli_antigravity_auth"
