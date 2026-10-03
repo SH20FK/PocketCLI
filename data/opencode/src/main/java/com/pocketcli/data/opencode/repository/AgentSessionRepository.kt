@@ -65,8 +65,9 @@ class AgentSessionRepository @Inject constructor(
                 return@transformLatest
             }
             val session = database.sessionDao().getSessionBySessionId(firstInFlight.sessionId)
-            val projectName = if (session?.workspaceId != null) {
-                database.workspaceDao().getById(session.workspaceId)?.displayName ?: session.title
+            val wsId = session?.workspaceId
+            val projectName = if (wsId != null) {
+                database.workspaceDao().getById(wsId)?.displayName ?: session.title
             } else {
                 session?.title?.takeIf { it.isNotBlank() } ?: "Сессия"
             }
