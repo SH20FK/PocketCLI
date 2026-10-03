@@ -69,24 +69,25 @@ class ChatViewModel @Inject constructor(
  }
  }
 
- // 3. Reconcile existing server messages if available
- val apiClient = effectiveAdapter?.apiClient
- if (apiClient != null && resolvedProfileId.isNotEmpty()) {
- launch {
- repository.reconcile(apiClient, resolvedProfileId, sessionId)
- }
- launch {
- apiClient.getTodos(sessionId).onSuccess { todosDto ->
- val items = todosDto.map {
- TodoItem(content = it.content, status = it.status, priority = it.priority)
- }
- _uiState.update { current ->
- val nextState = current.copy(todos = items)
- syncNodesAndComposer(nextState)
- }
- }
- }
- }
+        // 3. Reconcile existing server messages if available
+        val openCodeAdapter = effectiveAdapter as? OpenCodeAdapter
+        val apiClient = openCodeAdapter?.apiClient
+        if (apiClient != null && resolvedProfileId.isNotEmpty()) {
+            launch {
+                repository.reconcile(apiClient, resolvedProfileId, sessionId)
+            }
+            launch {
+                apiClient.getTodos(sessionId).onSuccess { todosDto ->
+                    val items = todosDto.map {
+                        TodoItem(content = it.content, status = it.status, priority = it.priority)
+                    }
+                    _uiState.update { current ->
+                        val nextState = current.copy(todos = items)
+                        syncNodesAndComposer(nextState)
+                    }
+                }
+            }
+        }
 
  // 4. Observe SSE events for this session
  if (effectiveAdapter != null) {
@@ -272,11 +273,12 @@ class ChatViewModel @Inject constructor(
  return@launch
  }
 
- // 3. Reconcile with server to guarantee response is stored even if SSE dropped
- val apiClient = adapter.apiClient
- if (state.profileId.isNotEmpty()) {
- repository.reconcile(apiClient, state.profileId, state.sessionId)
- }
+        // 3. Reconcile with server to guarantee response is stored even if SSE dropped
+        val openCodeAdapter = adapter as? OpenCodeAdapter
+        val apiClient = openCodeAdapter?.apiClient
+        if (apiClient != null && state.profileId.isNotEmpty()) {
+            repository.reconcile(apiClient, state.profileId, state.sessionId)
+        }
  _uiState.update { current ->
  val nextState = current.copy(sessionState = SessionState.IDLE)
  syncNodesAndComposer(nextState)
