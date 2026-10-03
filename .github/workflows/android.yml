@@ -34,7 +34,8 @@ jobs:
         run: chmod +x gradlew || true
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: |
+          ./gradlew testDebugUnitTest --stacktrace || (echo "=== FAILED TESTS DETAILS ===" && find . -name "*.xml" -path "*/test-results/*" -exec cat {} + && exit 1)
 
       - name: Upload Test Reports
         if: always()

@@ -1,6 +1,7 @@
 package com.pocketcli.data.opencode
 
 import app.cash.turbine.test
+import kotlin.time.Duration.Companion.seconds
 import com.pocketcli.core.model.PermissionOption
 import com.pocketcli.core.model.SessionState
 import com.pocketcli.core.model.ToolStatus
@@ -109,10 +110,10 @@ class OpenCodeAdapterTest {
         mockWebServer.enqueue(
             MockResponse()
                 .setHeader("Content-Type", "text/event-stream")
-                .setBody(sseStream)
+                .setBody(sseStream + "\n\n")
         )
 
-        adapter.events("ses_test_123").test {
+        adapter.events("ses_test_123").test(timeout = 10.seconds) {
             // 1. SessionStatus BUSY
             val e1 = awaitItem()
             assertTrue(e1 is com.pocketcli.core.model.AgentEvent.SessionStatus)
