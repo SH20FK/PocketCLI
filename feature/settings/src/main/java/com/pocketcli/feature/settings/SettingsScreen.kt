@@ -16,60 +16,96 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.pocketcli.data.local.db.ConnectionProfileEntity
+import com.pocketcli.runtime.local.supervisor.LocalRuntimeSupervisor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    runtimeViewModel: LocalRuntimeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val runtimeUiState by runtimeViewModel.uiState.collectAsState()
+    val installerState by runtimeViewModel.installerState.collectAsState()
+    val supervisorState by runtimeViewModel.supervisorState.collectAsState()
+    val logs by runtimeViewModel.logs.collectAsState()
+    val providerKeys by runtimeViewModel.providerKeys.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(runtimeUiState.errorMessage) {
+        runtimeUiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connection Profiles") }
+                title = { Text("Настройки и профили") }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.openAddDialog() }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Server Profile")
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Добавить удаленный сервер")
             }
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (uiState.profiles.isEmpty()) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+            // Local runtime card at the top
+            item {
+                LocalRuntimeCard(
+                    installerState = installerState,
+                    supervisorState = supervisorState,
+                    isLocalActive = uiState.activeProfileId == LocalRuntimeSupervisor.LOCAL_PROFILE_ID,
+                    onInstall = { runtimeViewModel.install() },
+                    onUninstall = { runtimeViewModel.uninstall() },
+                    onStart = { runtimeViewModel.startServer() },
+                    onStop = { runtimeViewModel.stopServer() },
+                    onRestart = { runtimeViewModel.restartServer() },
+                    onActivate = { runtimeViewModel.activateLocalProfile() },
+                    onOpenLogs = { runtimeViewModel.openLogsDialog() },
+                    onOpenKeys = { runtimeViewModel.openProviderKeysDialog() }
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Удалённые серверы OpenCode",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            val remoteProfiles = uiState.profiles.filter { it.id != LocalRuntimeSupervisor.LOCAL_PROFILE_ID }
+            if (remoteProfiles.isEmpty()) {
+                item {
                     Text(
-                        text = "No connection profiles configured.\nTap + to add your OpenCode server.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Нет добавленных удаленных серверов. Нажмите +, чтобы подключиться к компьютеру или VPS.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp)
                     )
                 }
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(uiState.profiles, key = { it.id }) { profile ->
-                        val isSelected = profile.id == uiState.activeProfileId
-                        ProfileCard(
-                            profile = profile,
-                            isSelected = isSelected,
-                            onSelect = { viewModel.selectActiveProfile(profile.id) },
-                            onDelete = { viewModel.deleteProfile(profile.id) }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                items(remoteProfiles, key = { it.id }) { profile ->
+                    val isSelected = profile.id == uiState.activeProfileId
+                    ProfileCard(
+                        profile = profile,
+                        isSelected = isSelected,
+                        onSelect = { viewModel.selectActiveProfile(profile.id) },
+                        onDelete = { viewModel.deleteProfile(profile.id) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -85,6 +121,38 @@ fun SettingsScreen(
                 onTestConnection = { viewModel.testConnection() },
                 onSave = { viewModel.saveProfile() },
                 onDismiss = { viewModel.dismissAddDialog() }
+            )
+        }
+
+        if (runtimeUiState.showOnboardingDialog) {
+            OnboardingDialog(
+                onSelectLocal = {
+                    runtimeViewModel.dismissOnboarding()
+                    runtimeViewModel.install()
+                },
+                onSelectRemote = {
+                    runtimeViewModel.dismissOnboarding()
+                    viewModel.openAddDialog()
+                },
+                onDismiss = { runtimeViewModel.dismissOnboarding() }
+            )
+        }
+
+        if (runtimeUiState.showLogsDialog) {
+            LogViewerDialog(
+                logs = logs,
+                filterQuery = runtimeUiState.logFilterQuery,
+                onFilterChange = { runtimeViewModel.updateLogFilter(it) },
+                onClearLogs = { runtimeViewModel.clearLogs() },
+                onDismiss = { runtimeViewModel.dismissLogsDialog() }
+            )
+        }
+
+        if (runtimeUiState.showProviderKeysDialog) {
+            ProviderKeysDialog(
+                currentKeys = providerKeys,
+                onSaveKey = { envVar, value -> runtimeViewModel.saveProviderKey(envVar, value) },
+                onDismiss = { runtimeViewModel.dismissProviderKeysDialog() }
             )
         }
     }

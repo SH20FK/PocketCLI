@@ -2,6 +2,7 @@ package com.pocketcli.runtime.local.supervisor
 
 import com.pocketcli.core.model.HealthInfo
 import com.pocketcli.core.model.Transport
+import com.pocketcli.core.security.ProviderKeyStore
 import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.local.db.ConnectionProfileEntity
 import com.pocketcli.data.local.db.ProfileDao
@@ -37,12 +38,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class LocalRuntimeSupervisor(
+open class LocalRuntimeSupervisor(
     private val prootEnvironment: ProotEnvironment,
     private val runtimeInstaller: RuntimeInstaller,
     private val profileDao: ProfileDao,
     private val secretStore: SecretStore,
-    val logBuffer: CircularLogBuffer,
+    open val logBuffer: CircularLogBuffer,
     private val host: String = "127.0.0.1",
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -64,7 +65,8 @@ class LocalRuntimeSupervisor(
         runtimeInstaller: RuntimeInstaller,
         profileDao: ProfileDao,
         secretStore: SecretStore,
-        logBuffer: CircularLogBuffer
+        logBuffer: CircularLogBuffer,
+        providerKeyStore: ProviderKeyStore
     ) : this(
         prootEnvironment = prootEnvironment,
         runtimeInstaller = runtimeInstaller,
@@ -78,7 +80,8 @@ class LocalRuntimeSupervisor(
             File(runtimeInstaller.runtimeBaseDir.parentFile, "workspaces").apply {
                 if (!exists()) mkdirs()
             }
-        }
+        },
+        providerKeyProvider = { kotlinx.coroutines.runBlocking { providerKeyStore.getAllDecrypted() } }
     )
 
     companion object {
@@ -89,7 +92,7 @@ class LocalRuntimeSupervisor(
     }
 
     private val _state = MutableStateFlow<LocalRuntimeState>(LocalRuntimeState.Stopped)
-    val state: StateFlow<LocalRuntimeState> = _state.asStateFlow()
+    open val state: StateFlow<LocalRuntimeState> = _state.asStateFlow()
 
     private var currentProcess: Process? = null
     private var processMonitorJob: Job? = null
@@ -109,7 +112,7 @@ class LocalRuntimeSupervisor(
         queryHealth(runningState.port, runningState.token)
     }
 
-    suspend fun startServer(autoRestart: Boolean = true): Result<Unit> = withContext(ioDispatcher) {
+    open suspend fun startServer(autoRestart: Boolean = true): Result<Unit> = withContext(ioDispatcher) {
         if (_state.value is LocalRuntimeState.Running || _state.value is LocalRuntimeState.Starting) {
             return@withContext Result.success(Unit)
         }
@@ -119,12 +122,12 @@ class LocalRuntimeSupervisor(
         launchStart()
     }
 
-    suspend fun restartServer(): Result<Unit> = withContext(ioDispatcher) {
+    open suspend fun restartServer(): Result<Unit> = withContext(ioDispatcher) {
         stopServer()
         startServer(autoRestart = true)
     }
 
-    suspend fun stopServer(): Result<Unit> = withContext(ioDispatcher) {
+    open suspend fun stopServer(): Result<Unit> = withContext(ioDispatcher) {
         shouldAutoRestart = false
         processMonitorJob?.cancel()
         processMonitorJob = null

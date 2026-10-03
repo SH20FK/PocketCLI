@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:security"))
     implementation(project(":data:local"))
     implementation(project(":data:opencode"))
+    implementation(project(":runtime:local"))
 
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
@@ -48,4 +49,8 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

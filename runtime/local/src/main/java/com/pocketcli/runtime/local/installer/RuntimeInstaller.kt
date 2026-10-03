@@ -48,8 +48,10 @@ sealed interface InstallState {
     data class Failed(val error: String, val canRetry: Boolean) : InstallState
 }
 
+typealias InstallerState = InstallState
+
 @Singleton
-class RuntimeInstaller(
+open class RuntimeInstaller(
     private val prootEnvironment: ProotEnvironment,
     private val manifestParser: ManifestParser,
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
@@ -78,7 +80,7 @@ class RuntimeInstaller(
     )
 
     private val _state = MutableStateFlow<InstallState>(InstallState.NotInstalled)
-    val state: StateFlow<InstallState> = _state.asStateFlow()
+    open val state: StateFlow<InstallState> = _state.asStateFlow()
 
     private var activeJob: Job? = null
 
@@ -110,7 +112,7 @@ class RuntimeInstaller(
         }
     }
 
-    fun isInstalled(): Boolean {
+    open fun isInstalled(): Boolean {
         val ready = markerFile.exists()
         val opencode = File(rootfsDir, "usr/bin/opencode").exists()
         return ready && opencode
@@ -142,7 +144,7 @@ class RuntimeInstaller(
         return null
     }
 
-    suspend fun install(force: Boolean = false): Result<Unit> = withContext(ioDispatcher) {
+    open suspend fun install(force: Boolean = false): Result<Unit> = withContext(ioDispatcher) {
         if (!force && isInstalled()) {
             val version = getInstalledVersion() ?: "unknown"
             _state.value = InstallState.Ready(version)
@@ -281,7 +283,7 @@ class RuntimeInstaller(
         return install(force = true)
     }
 
-    suspend fun uninstall(deleteCachedDownloads: Boolean = false): Result<Unit> = withContext(ioDispatcher) {
+    open suspend fun uninstall(deleteCachedDownloads: Boolean = false): Result<Unit> = withContext(ioDispatcher) {
         cancel()
         if (rootfsDir.exists()) {
             rootfsDir.deleteRecursively()

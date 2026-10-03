@@ -15,4 +15,10 @@ abstract class SecurityModule {
     abstract fun bindSecretStore(
         impl: AndroidKeystoreSecretStore
     ): SecretStore
+
+    @Binds
+    @Singleton
+    abstract fun bindProviderKeyStore(
+        impl: SharedPreferencesProviderKeyStore
+    ): ProviderKeyStore
 }
