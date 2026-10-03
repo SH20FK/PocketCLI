@@ -85,7 +85,7 @@ class LocalRuntimeSupervisorTest {
         fakeSecretStore = FakeSecretStore()
         logBuffer = CircularLogBuffer(capacity = 50)
         mockWebServer = MockWebServer()
-        mockWebServer.start()
+        mockWebServer.start(java.net.InetAddress.getByName("127.0.0.1"), 0)
     }
 
     @After
@@ -138,12 +138,12 @@ class LocalRuntimeSupervisorTest {
         val runningState = supervisor.state.value as LocalRuntimeState.Running
         assertEquals(mockWebServer.port, runningState.port)
         assertEquals("test-token-123", runningState.token)
-        assertEquals("http://127.0.0.1:${mockWebServer.port}", supervisor.baseUrl)
+        assertEquals("http://${mockWebServer.hostName}:${mockWebServer.port}", supervisor.baseUrl)
 
         // Verify profile registered in DB
         val profile = fakeProfileDao.getById(LocalRuntimeSupervisor.LOCAL_PROFILE_ID)
         assertNotNull("Local profile should be saved in DB", profile)
-        assertEquals("http://127.0.0.1:${mockWebServer.port}", profile?.url)
+        assertEquals("http://${mockWebServer.hostName}:${mockWebServer.port}", profile?.url)
         assertEquals("enc_test-token-123", profile?.encryptedPassword)
 
         // Verify log buffer has messages
@@ -174,7 +174,8 @@ class LocalRuntimeSupervisorTest {
     }
 
     private fun createSupervisor(
-        port: Int = 4096,
+        host: String = mockWebServer.hostName,
+        port: Int = mockWebServer.port,
         processLauncher: (cmd: List<String>, env: Map<String, String>) -> Process = { _, _ -> FakeProcess() }
     ): LocalRuntimeSupervisor {
         return LocalRuntimeSupervisor(
@@ -183,6 +184,7 @@ class LocalRuntimeSupervisorTest {
             profileDao = fakeProfileDao,
             secretStore = fakeSecretStore,
             logBuffer = logBuffer,
+            host = host,
             okHttpClient = OkHttpClient.Builder().build(),
             ioDispatcher = testDispatcher,
             workspacesDirProvider = { File(filesDir, "workspaces") },

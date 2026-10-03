@@ -42,6 +42,7 @@ class LocalRuntimeSupervisor(
     private val profileDao: ProfileDao,
     private val secretStore: SecretStore,
     val logBuffer: CircularLogBuffer,
+    private val host: String = "127.0.0.1",
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val workspacesDirProvider: () -> File,
@@ -69,6 +70,7 @@ class LocalRuntimeSupervisor(
         profileDao = profileDao,
         secretStore = secretStore,
         logBuffer = logBuffer,
+        host = "127.0.0.1",
         okHttpClient = OkHttpClient.Builder().build(),
         ioDispatcher = Dispatchers.IO,
         workspacesDirProvider = {
@@ -94,7 +96,7 @@ class LocalRuntimeSupervisor(
     private var restartAttempts = 0
 
     override val baseUrl: String
-        get() = (state.value as? LocalRuntimeState.Running)?.let { "http://127.0.0.1:${it.port}" } ?: ""
+        get() = (state.value as? LocalRuntimeState.Running)?.let { "http://$host:${it.port}" } ?: ""
 
     override val isConnected: Boolean
         get() = state.value is LocalRuntimeState.Running
@@ -185,7 +187,7 @@ class LocalRuntimeSupervisor(
                 "/usr/bin/opencode",
                 "serve",
                 "--hostname",
-                "127.0.0.1",
+                host,
                 "--port",
                 port.toString()
             )
@@ -249,7 +251,7 @@ class LocalRuntimeSupervisor(
             val profile = ConnectionProfileEntity(
                 id = LOCAL_PROFILE_ID,
                 name = "Локальный агент",
-                url = "http://127.0.0.1:$port",
+                url = "http://$host:$port",
                 username = "admin",
                 encryptedPassword = secretStore.encrypt(token),
                 allowCleartextHttp = true,
@@ -264,7 +266,7 @@ class LocalRuntimeSupervisor(
                 pid = pid,
                 startedAt = System.currentTimeMillis()
             )
-            logBuffer.append("[Supervisor] Сервер успешно запущен и готов к работе на 127.0.0.1:$port (PID: $pid)")
+            logBuffer.append("[Supervisor] Сервер успешно запущен и готов к работе на $host:$port (PID: $pid)")
 
             // Start monitoring process exit for auto-restart
             startProcessMonitor(process)
@@ -321,7 +323,7 @@ class LocalRuntimeSupervisor(
     }
 
     private fun queryHealth(port: Int, token: String): Result<HealthInfo> {
-        val url = "http://127.0.0.1:$port/global/health"
+        val url = "http://$host:$port/global/health"
         val request = Request.Builder()
             .url(url)
             .header("Authorization", Credentials.basic("admin", token))
