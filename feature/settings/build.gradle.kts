@@ -33,6 +33,10 @@ dependencies {
     implementation(project(":core:security"))
     implementation(project(":data:opencode"))
 
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.room.runtime)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)

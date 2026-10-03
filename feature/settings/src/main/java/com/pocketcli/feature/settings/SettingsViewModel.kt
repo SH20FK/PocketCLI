@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pocketcli.core.security.SecretStore
 import com.pocketcli.data.opencode.api.CleartextHttpPolicyInterceptor
 import com.pocketcli.data.opencode.api.OpenCodeApiClient
-import com.pocketcli.data.opencode.db.AppDatabase
+import com.pocketcli.data.opencode.db.ProfileDao
 import com.pocketcli.data.opencode.db.ConnectionProfileEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -29,7 +29,7 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val database: AppDatabase,
+    private val profileDao: ProfileDao,
     private val secretStore: SecretStore
 ) : ViewModel() {
 
@@ -38,7 +38,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            database.profileDao().getAll().collect { list ->
+            profileDao.getAll().collect { list ->
                 _uiState.update { current ->
                     val activeId = if (current.activeProfileId.isEmpty() && list.isNotEmpty()) {
                         list.first().id
@@ -118,14 +118,14 @@ class SettingsViewModel @Inject constructor(
         )
 
         viewModelScope.launch {
-            database.profileDao().upsert(profile)
+            profileDao.upsert(profile)
             _uiState.update { it.copy(showAddDialog = false, activeProfileId = profile.id) }
         }
     }
 
     fun deleteProfile(id: String) {
         viewModelScope.launch {
-            database.profileDao().deleteById(id)
+            profileDao.deleteById(id)
         }
     }
 }
