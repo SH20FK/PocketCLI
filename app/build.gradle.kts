@@ -28,6 +28,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("pocketcli-release.jks")
+            storePassword = project.findProperty("POCKETCLI_KEYSTORE_PASSWORD") as? String
+                ?: System.getenv("POCKETCLI_KEYSTORE_PASSWORD")
+                ?: "pocketcli_release_2026"
+            keyAlias = project.findProperty("POCKETCLI_KEY_ALIAS") as? String
+                ?: System.getenv("POCKETCLI_KEY_ALIAS")
+                ?: "pocketcli"
+            keyPassword = project.findProperty("POCKETCLI_KEY_PASSWORD") as? String
+                ?: System.getenv("POCKETCLI_KEY_PASSWORD")
+                ?: "pocketcli_release_2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -35,10 +50,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

@@ -1,6 +1,8 @@
 package com.pocketcli.core.update
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,7 +59,13 @@ class ApkVerifier(
             // Optional Android package verification when running in Android environment
             context?.let { ctx ->
                 try {
-                    val archiveInfo = ctx.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+                    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        PackageManager.GET_SIGNING_CERTIFICATES
+                    } else {
+                        @Suppress("DEPRECATION")
+                        PackageManager.GET_SIGNATURES
+                    }
+                    val archiveInfo = ctx.packageManager.getPackageArchiveInfo(apkFile.absolutePath, flags)
                     if (archiveInfo != null) {
                         val expectedPkg = expectedPackageName ?: ctx.packageName
                         if (archiveInfo.packageName != expectedPkg && !archiveInfo.packageName.startsWith("com.pocketcli")) {
@@ -70,7 +78,44 @@ class ApkVerifier(
                                 SecurityException("Номер версии в APK (${archiveInfo.longVersionCode}) должен быть строго больше установленного ($minVersionCode)")
                             )
                         }
+
+                        // Check signature compatibility with currently installed package
+                        val currentPackageInfo = try {
+                            ctx.packageManager.getPackageInfo(ctx.packageName, flags)
+                        } catch (_: Exception) {
+                            null
+                        }
+
+                        if (currentPackageInfo != null) {
+                            val currentCerts = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                currentPackageInfo.signingInfo?.apkContentsSigners?.map { it.toCharsString() }
+                            } else {
+                                @Suppress("DEPRECATION")
+                                currentPackageInfo.signatures?.map { it.toCharsString() }
+                            }
+
+                            val newCerts = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                archiveInfo.signingInfo?.apkContentsSigners?.map { it.toCharsString() }
+                            } else {
+                                @Suppress("DEPRECATION")
+                                archiveInfo.signatures?.map { it.toCharsString() }
+                            }
+
+                            if (!currentCerts.isNullOrEmpty() && !newCerts.isNullOrEmpty()) {
+                                val match = currentCerts.any { cur -> newCerts.contains(cur) }
+                                if (!match) {
+                                    return@withContext Result.failure(
+                                        SecurityException(
+                                            "Подпись обновляемого APK не совпадает с установленным приложением.\n" +
+                                            "Для перехода на единую релизную подпись требуется однократно удалить старую версию и установить этот APK."
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
+                } catch (e: SecurityException) {
+                    return@withContext Result.failure(e)
                 } catch (_: Exception) {
                     // Ignored in unit testing environments where PackageManager is unavailable
                 }
