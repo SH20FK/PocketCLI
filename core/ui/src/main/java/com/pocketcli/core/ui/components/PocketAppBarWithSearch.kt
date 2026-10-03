@@ -36,6 +36,9 @@ fun PocketAppBarWithSearch(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .padding(top = 8.dp)
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 IconButton(onClick = {

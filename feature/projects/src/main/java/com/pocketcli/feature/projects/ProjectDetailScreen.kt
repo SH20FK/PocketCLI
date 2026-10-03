@@ -47,8 +47,18 @@ fun ProjectDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TopAppBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .displayCutoutPadding()
+                        .padding(top = 4.dp),
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -98,8 +108,8 @@ fun ProjectDetailScreen(
                             )
                         }
                     }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(

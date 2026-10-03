@@ -37,68 +37,78 @@ fun ChatTopBar(
     onOverflowClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    TopAppBar(
-        modifier = modifier.heightIn(min = 64.dp),
-        navigationIcon = {
-            IconButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад"
-                )
-            }
-        },
-        title = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onTitleClick)
-            ) {
-                Text(
-                    text = sessionTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(PocketSpacing.xs)
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        TopAppBar(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .displayCutoutPadding()
+                .padding(top = 4.dp),
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            navigationIcon = {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    PocketStatus(state = statusState, compact = true)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Назад"
+                    )
+                }
+            },
+            title = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onTitleClick)
+                ) {
                     Text(
-                        text = "$projectName · $runtimeName",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = sessionTitle,
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(PocketSpacing.xs)
+                    ) {
+                        PocketStatus(state = statusState, compact = true)
+                        Text(
+                            text = "$projectName · $runtimeName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-            }
-        },
-        actions = {
-            IconButton(
-                onClick = onFilesClick,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Description,
-                    contentDescription = "Файлы"
-                )
-            }
-            IconButton(
-                onClick = onOverflowClick,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Опции"
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            },
+            actions = {
+                IconButton(
+                    onClick = onFilesClick,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = "Файлы"
+                    )
+                }
+                IconButton(
+                    onClick = onOverflowClick,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Опции"
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         )
-    )
+    }
 }

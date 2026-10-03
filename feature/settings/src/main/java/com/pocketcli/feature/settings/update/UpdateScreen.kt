@@ -32,19 +32,33 @@ fun UpdateScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                title = { Text("Обновление приложения") },
-                actions = {
-                    IconButton(onClick = { viewModel.checkForUpdates() }) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Проверить")
-                    }
-                }
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TopAppBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .displayCutoutPadding()
+                        .padding(top = 4.dp),
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        }
+                    },
+                    title = { Text("Обновление приложения") },
+                    actions = {
+                        IconButton(onClick = { viewModel.checkForUpdates() }) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Проверить")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         },
         modifier = modifier
     ) { innerPadding ->

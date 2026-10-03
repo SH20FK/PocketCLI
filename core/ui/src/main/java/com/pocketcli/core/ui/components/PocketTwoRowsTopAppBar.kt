@@ -24,6 +24,9 @@ fun PocketTwoRowsTopAppBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
+                .displayCutoutPadding()
+                .padding(top = 8.dp)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Row(
