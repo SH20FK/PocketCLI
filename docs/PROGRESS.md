@@ -23,7 +23,7 @@
 - [x] Реализация `:feature:settings` (`SettingsScreen`, управление профилями серверов с кнопкой «Проверить подключение» и переключателем Cleartext HTTP).
 - [x] Реализация `:app` (`PocketCliApp` с Notification Channels, `MainActivity` с `NavigationSuiteScaffold` и адаптивной навигацией).
 
-## Этап 2 — Автономный локальный рантайм на телефоне (В процессе)
+## Этап 2 — Автономный локальный рантайм на телефоне (Завершён)
 
 ### Веха 1: Выделение `:data:local` (Завершена)
 - [x] Создан выделенный модуль `:data:local`.
@@ -52,9 +52,41 @@
 - [x] Реализован `ManifestParser` с валидацией схемы и контрольных сумм.
 - [x] Реализованы `ProotEnvironment` и `ProotSpikeRunner`.
 - [x] Написаны юнит-тесты `ManifestParserTest`, `ProotEnvironmentTest`.
+- [x] Пройдена верификация CI на GitHub Actions (Run 37107775952).
+
+### Веха 4: Установщик рантайма (`RuntimeInstaller`) (Завершена)
+- [x] Разработан `TarExtractor` на чистом Kotlin (поддержка symlinks, директорий, бинарных прав chmod, GNU LongLink, защита от Zip-Slip path traversal).
+- [x] Реализован `RuntimeInstaller` с конечным автоматом состояний (`NotInstalled` -> `CheckingPrerequisites` -> `Downloading` -> `Verifying` -> `Extracting` -> `Configuring` -> `Ready`).
+- [x] Реализована докачка через HTTP Range (`bytes=X-`), вычисление SHA-256 на лету, проверка свободного дискового пространства (>350 МБ).
+- [x] Первичная настройка rootfs: генерация `/etc/resolv.conf` (Google/Cloudflare DNS), `/etc/hosts`, маркерный файл `.pocketcli_ready`.
+- [x] Юнит-тесты на MockWebServer: `TarExtractorTest`, `RuntimeInstallerTest`.
+- [x] Пройдена верификация CI на GitHub Actions (Run 37109852203).
+
+### Веха 5: Супервайзер процессов и Foreground Service (Завершена)
+- [x] Разработан потокобезопасный кольцевой буфер `CircularLogBuffer` для захвата stdout/stderr процесса.
+- [x] Реализован `LocalRuntimeSupervisor`: управление жизненным циклом процесса, выделение случайного порта, генерация 24-байтного криптографического токена, автоматический перезапуск с экспоненциальным backoff (1s, 2s, 4s, макс 3 попытки), монтирование `/workspace`, health-check `/global/health` с `BasicAuth`.
+- [x] Реализован `LocalRuntimeService` (Foreground Service типа `specialUse`, WakeLock, ongoing-уведомление с действием «Остановить», открытие чата по тапу, таймер простоя 10 минут).
+- [x] Объявлены необходимые разрешения в `AndroidManifest.xml` (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `WAKE_LOCK`).
+- [x] Написаны юнит-тесты `LocalRuntimeSupervisorTest`.
+- [x] Пройдена верификация CI на GitHub Actions (Run 37111805723).
+
+### Веха 6: Онбординг, настройки рантайма и интеграция UI (Завершена)
+- [x] Реализован `ProviderKeyStore` и `SharedPreferencesProviderKeyStore` в `:core:security` для безопасного хранения зашифрованных в Android Keystore API-ключей моделей (Anthropic, OpenAI, Gemini, DeepSeek, OpenRouter, Groq).
+- [x] Автоматическая инъекция ключей провайдеров в переменные окружения процесса OpenCode при старте.
+- [x] Разработан `LocalRuntimeViewModel` в `:feature:settings` (реактивное управление состояниями установки, супервайзера, потоком логов и ключами провайдеров).
+- [x] Реализован `LocalRuntimeCard`: статус-бэйджи, линейный прогресс скачивания/распаковки, кнопки «Установить», «Запустить», «Стоп», «Рестарт», «Удалить», быстрый доступ к логам и ключам.
+- [x] Реализован `LogViewerDialog`: моноширинная консоль логов stdout/stderr с подсветкой синтаксиса, поисковым фильтром, кнопками копирования и очистки.
+- [x] Реализован `ProviderKeysDialog`: настройка API-ключей с маскированием и переключателем видимости паролей.
+- [x] Реализован `OnboardingDialog`: приветственный диалог выбора между локальным автономным запуском на телефоне и подключением к удалённому серверу.
+- [x] Написаны юнит-тесты `LocalRuntimeViewModelTest`.
+- [x] Пройдена верификация CI на GitHub Actions (Run 37112584531).
 
 ## Проверенные сборки и CI:
 - GitHub Actions Ubuntu Latest (CI/CD pipeline):
   - **Run 37099966772** (Этап 1 MVP) — SUCCESS
   - **Run 37105396455** (Веха 1 :data:local) — SUCCESS
   - **Run 37106640268** (Веха 2 :feature:projects) — SUCCESS
+  - **Run 37107775952** (Веха 3 PRoot & Spike) — SUCCESS
+  - **Run 37109852203** (Веха 4 RuntimeInstaller) — SUCCESS
+  - **Run 37111805723** (Веха 5 Supervisor & Service) — SUCCESS
+  - **Run 37112584531** (Веха 6 Onboarding & Settings UI) — SUCCESS
