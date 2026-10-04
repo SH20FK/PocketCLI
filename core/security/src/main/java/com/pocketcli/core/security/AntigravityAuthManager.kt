@@ -107,6 +107,7 @@ open class AntigravityAuthManager private constructor(
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .dns(ResilientDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()

@@ -2,6 +2,7 @@ package com.pocketcli.data.opencode.antigravity
 
 import com.pocketcli.core.model.*
 import com.pocketcli.core.security.AntigravityAuthManager
+import com.pocketcli.core.security.ResilientDns
 import com.pocketcli.data.local.db.AppDatabase
 import com.pocketcli.data.local.db.SessionEntity
 import kotlinx.coroutines.*
@@ -92,6 +93,7 @@ class AntigravityAdapter(
     val profileId: String = "antigravity",
     val underlyingAdapter: AgentAdapter? = null,
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .dns(ResilientDns)
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(180, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)

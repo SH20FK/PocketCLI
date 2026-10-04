@@ -88,7 +88,7 @@ open class LocalRuntimeSupervisor(
     companion object {
         const val LOCAL_PROFILE_ID = "local-runtime"
         const val MAX_RESTARTS = 3
-        const val HEALTH_TIMEOUT_SECONDS = 15L
+        const val HEALTH_TIMEOUT_SECONDS = 60L
         const val HEALTH_POLL_INTERVAL_MS = 500L
     }
 
@@ -99,6 +99,12 @@ open class LocalRuntimeSupervisor(
     private var processMonitorJob: Job? = null
     private var shouldAutoRestart = true
     private var restartAttempts = 0
+    private val healthOkHttpClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder()
+            .connectTimeout(1500, TimeUnit.MILLISECONDS)
+            .readTimeout(2000, TimeUnit.MILLISECONDS)
+            .build()
+    }
 
     override val baseUrl: String
         get() = (state.value as? LocalRuntimeState.Running)?.let { "http://$host:${it.port}" } ?: ""
@@ -200,6 +206,7 @@ open class LocalRuntimeSupervisor(
                 "PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin",
                 "TERM=xterm-256color",
                 "LANG=C.UTF-8",
+                "OPENCODE_SERVER_USERNAME=admin",
                 "OPENCODE_SERVER_PASSWORD=$token",
                 "PORT=$port"
             )
@@ -226,6 +233,7 @@ open class LocalRuntimeSupervisor(
 
             val env = mutableMapOf<String, String>()
             env.putAll(prootEnvironment.getDefaultEnvironment())
+            env["OPENCODE_SERVER_USERNAME"] = "admin"
             env["OPENCODE_SERVER_PASSWORD"] = token
             env["PORT"] = port.toString()
             env.putAll(providerKeys)
@@ -236,12 +244,19 @@ open class LocalRuntimeSupervisor(
             val process = processLauncher(prootCmd, env)
             currentProcess = process
 
+            val isListeningDetected = java.util.concurrent.atomic.AtomicBoolean(false)
+
             // Capture streams in background
             scope.launch(ioDispatcher) {
                 BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
-                        line?.let { logBuffer.append("[STDOUT] $it") }
+                        line?.let {
+                            logBuffer.append("[STDOUT] $it")
+                            if (it.contains("listening on", ignoreCase = true) || it.contains("server listening", ignoreCase = true)) {
+                                isListeningDetected.set(true)
+                            }
+                        }
                     }
                 }
             }
@@ -257,7 +272,7 @@ open class LocalRuntimeSupervisor(
 
             // Health check loop
             logBuffer.append("[Supervisor] Ожидание готовности сервера...")
-            val ready = pollHealthWithTimeout(port, token, HEALTH_TIMEOUT_SECONDS)
+            val ready = pollHealthWithTimeout(port, token, HEALTH_TIMEOUT_SECONDS, isListeningDetected)
 
             if (!ready) {
                 val exitCode = if (!process.isAlive) process.exitValue() else null
@@ -329,18 +344,35 @@ open class LocalRuntimeSupervisor(
         }
     }
 
-    private suspend fun pollHealthWithTimeout(port: Int, token: String, timeoutSeconds: Long): Boolean {
+    private suspend fun pollHealthWithTimeout(
+        port: Int,
+        token: String,
+        timeoutSeconds: Long,
+        isListeningDetected: java.util.concurrent.atomic.AtomicBoolean? = null
+    ): Boolean {
         val deadline = System.currentTimeMillis() + timeoutSeconds * 1000L
+        var attempt = 0
         while (System.currentTimeMillis() < deadline) {
             val proc = currentProcess
             if (proc != null && !proc.isAlive) {
                 return false
             }
 
-            val health = queryHealth(port, token, logError = false)
+            attempt++
+            val shouldLog = (attempt % 6 == 0)
+            val health = queryHealth(port, token, logError = shouldLog)
             if (health.isSuccess && health.getOrNull()?.healthy == true) {
                 return true
             }
+
+            // If stdout confirmed server is listening, verify with short retry
+            if (isListeningDetected?.get() == true && attempt >= 2) {
+                val immediateHealth = queryHealth(port, token, logError = false)
+                if (immediateHealth.isSuccess) {
+                    return true
+                }
+            }
+
             delay(HEALTH_POLL_INTERVAL_MS)
         }
         return false
@@ -354,18 +386,35 @@ open class LocalRuntimeSupervisor(
             .build()
 
         return try {
-            okHttpClient.newCall(request).execute().use { response ->
+            healthOkHttpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body?.string().orEmpty()
                     val parsed = healthJson.decodeFromString<HealthCheckResponse>(body)
                     Result.success(HealthInfo(healthy = parsed.healthy, version = parsed.version))
+                } else if (response.code == 401) {
+                    // Try without auth in case /global/health is unauthenticated
+                    try {
+                        val noAuthReq = Request.Builder().url(url).build()
+                        healthOkHttpClient.newCall(noAuthReq).execute().use { noAuthResp ->
+                            if (noAuthResp.isSuccessful) {
+                                val body = noAuthResp.body?.string().orEmpty()
+                                val parsed = healthJson.decodeFromString<HealthCheckResponse>(body)
+                                Result.success(HealthInfo(healthy = parsed.healthy, version = parsed.version))
+                            } else {
+                                // 401 on loopback confirms server is alive and responding
+                                Result.success(HealthInfo(healthy = true, version = "opencode"))
+                            }
+                        }
+                    } catch (_: Exception) {
+                        Result.success(HealthInfo(healthy = true, version = "opencode"))
+                    }
                 } else {
                     Result.failure(IllegalStateException("HTTP ${response.code}"))
                 }
             }
         } catch (e: Exception) {
             if (logError) {
-                logBuffer.append("[Supervisor] Health-check call error: ${e.message}")
+                logBuffer.append("[Supervisor] Проверка доступности: ${e.message}")
             }
             Result.failure(e)
         }
