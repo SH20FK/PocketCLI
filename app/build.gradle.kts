@@ -13,10 +13,10 @@ android {
 
     val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
         ?: System.getenv("VERSION_CODE")?.toIntOrNull()
-        ?: 1000909
+        ?: 1000910
     val vName = (project.findProperty("versionName") as? String)
         ?: System.getenv("VERSION_NAME")
-        ?: "1.0.9-beta.9"
+        ?: "1.0.9-beta.10"
 
     defaultConfig {
         applicationId = "com.pocketcli"
