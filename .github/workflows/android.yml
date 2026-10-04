@@ -80,14 +80,40 @@ jobs:
           fi
           echo "VERSION_NAME=${RAW_VER}" >> $GITHUB_ENV
           
-          # Compute integer versionCode: MAJOR * 1000000 + MINOR * 1000 + PATCH
+          # Parse version components
           BASE_VER=$(echo "$RAW_VER" | cut -d'-' -f1)
           MAJOR=$(echo "$BASE_VER" | cut -d'.' -f1)
           MINOR=$(echo "$BASE_VER" | cut -d'.' -f2)
           PATCH=$(echo "$BASE_VER" | cut -d'.' -f3)
-          VCODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
+
+          # Parse pre-release number (e.g. beta.5 -> 5, alpha.2 -> 2, rc.1 -> 51, stable -> 99)
+          PRE_NUM=99
+          if [[ "$RAW_VER" =~ -beta\.([0-9]+) ]]; then
+            PRE_NUM="${BASH_REMATCH[1]}"
+          elif [[ "$RAW_VER" =~ -alpha\.([0-9]+) ]]; then
+            PRE_NUM="${BASH_REMATCH[1]}"
+          elif [[ "$RAW_VER" =~ -rc\.([0-9]+) ]]; then
+            PRE_NUM="$(( 50 + BASH_REMATCH[1] ))"
+          elif [[ "$RAW_VER" == *"-"* ]]; then
+            PRE_NUM=1
+          fi
+
+          CALC_VCODE=$(( MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + PRE_NUM ))
+
+          # Check if app/build.gradle.kts defines a higher explicit versionCode
+          GRADLE_VCODE=$(grep -oE 'vCode\s*=\s*[0-9]+' app/build.gradle.kts | grep -oE '[0-9]+' || echo "0")
+          if [ -z "$GRADLE_VCODE" ]; then
+            GRADLE_VCODE=0
+          fi
+
+          if [ "$GRADLE_VCODE" -gt "$CALC_VCODE" ]; then
+            VCODE="$GRADLE_VCODE"
+          else
+            VCODE="$CALC_VCODE"
+          fi
+
           echo "VERSION_CODE=${VCODE}" >> $GITHUB_ENV
-          echo "Computed Version: Name=${RAW_VER}, Code=${VCODE}"
+          echo "Computed Version: Name=${RAW_VER}, Code=${VCODE} (calculated=${CALC_VCODE}, gradle=${GRADLE_VCODE})"
 
       - name: Build Release Artifacts
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'

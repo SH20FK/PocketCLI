@@ -51,7 +51,11 @@ class GitHubReleaseApi @Inject constructor(
     ): ManifestFetchResult = withContext(Dispatchers.IO) {
         val releasesUrl = "$apiBaseUrl/repos/$repoOwner/$repoName/releases?per_page=20"
 
-        val releases: List<GitHubReleaseDto> = try {
+        var releases: List<GitHubReleaseDto> = emptyList()
+        var lastError: String? = null
+
+        // 1. Try GitHub REST API
+        try {
             val req = Request.Builder()
                 .url(releasesUrl)
                 .header("User-Agent", "PocketCLI-Android-Updater")
@@ -59,14 +63,25 @@ class GitHubReleaseApi @Inject constructor(
                 .build()
 
             okHttpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) {
-                    return@withContext ManifestFetchResult.NetworkError("HTTP ${resp.code}: ${resp.message}")
+                if (resp.isSuccessful) {
+                    val body = resp.body?.string().orEmpty()
+                    releases = json.decodeFromString<List<GitHubReleaseDto>>(body)
+                } else {
+                    lastError = "REST API HTTP ${resp.code}: ${resp.message}"
                 }
-                val body = resp.body?.string().orEmpty()
-                json.decodeFromString<List<GitHubReleaseDto>>(body)
             }
         } catch (e: Exception) {
-            return@withContext ManifestFetchResult.NetworkError(e.localizedMessage ?: "Ошибка сети при запросе релизов")
+            lastError = "REST API: ${e.localizedMessage ?: "Ошибка сети"}"
+        }
+
+        // 2. If REST API failed or returned empty (e.g. rate limit HTTP 403/429), fallback to public Atom feed
+        if (releases.isEmpty()) {
+            val atomReleases = fetchFromAtomFeed(repoOwner, repoName)
+            if (atomReleases.isNotEmpty()) {
+                releases = atomReleases
+            } else if (lastError != null) {
+                return@withContext ManifestFetchResult.NetworkError(lastError)
+            }
         }
 
         // Filter releases:
@@ -118,5 +133,56 @@ class GitHubReleaseApi @Inject constructor(
         }
 
         ManifestFetchResult.Found(manifest)
+    }
+
+    private fun fetchFromAtomFeed(repoOwner: String, repoName: String): List<GitHubReleaseDto> {
+        val atomUrl = "https://github.com/$repoOwner/$repoName/releases.atom"
+        return try {
+            val req = Request.Builder()
+                .url(atomUrl)
+                .header("User-Agent", "PocketCLI-Android-Updater")
+                .build()
+
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return emptyList()
+                val body = resp.body?.string().orEmpty()
+                parseAtomFeed(body, repoOwner, repoName)
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    internal fun parseAtomFeed(atomXml: String, repoOwner: String, repoName: String): List<GitHubReleaseDto> {
+        val entryRegex = Regex("<entry>([\\s\\S]*?)</entry>")
+        val tagRegex = Regex("""/releases/tag/([^"/]+)""")
+        val updatedRegex = Regex("""<updated>([^<]+)</updated>""")
+
+        val results = mutableListOf<GitHubReleaseDto>()
+        for (match in entryRegex.findAll(atomXml)) {
+            val entryContent = match.groupValues[1]
+            val tagMatch = tagRegex.find(entryContent) ?: continue
+            val tag = tagMatch.groupValues[1]
+            val updated = updatedRegex.find(entryContent)?.groupValues?.get(1)
+
+            val isPrerelease = tag.contains(Regex("-(beta|alpha|rc)", RegexOption.IGNORE_CASE))
+            val assetUrl = "https://github.com/$repoOwner/$repoName/releases/download/$tag/update.json"
+
+            results.add(
+                GitHubReleaseDto(
+                    tagName = tag,
+                    draft = false,
+                    prerelease = isPrerelease,
+                    publishedAt = updated,
+                    assets = listOf(
+                        GitHubAssetDto(
+                            name = "update.json",
+                            browserDownloadUrl = assetUrl
+                        )
+                    )
+                )
+            )
+        }
+        return results
     }
 }

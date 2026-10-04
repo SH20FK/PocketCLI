@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,6 +41,23 @@ fun SettingsScreen(
     val logs by runtimeViewModel.logs.collectAsState()
     val providerKeys by runtimeViewModel.providerKeys.collectAsState()
     val antigravityAuthState by runtimeViewModel.antigravityAuthState.collectAsState()
+
+    val context = LocalContext.current
+    val (appVersionName, appVersionCode) = remember(context) {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val vName = pInfo.versionName ?: "1.0.0"
+            val vCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                pInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode.toLong()
+            }
+            Pair(vName, vCode)
+        } catch (_: Exception) {
+            Pair("1.0.0", 1L)
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -120,7 +138,7 @@ fun SettingsScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "Проверка новых релизов через GitHub Releases",
+                                    text = "Версия v$appVersionName (сборка $appVersionCode)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

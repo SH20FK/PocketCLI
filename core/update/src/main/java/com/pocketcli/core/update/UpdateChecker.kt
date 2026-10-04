@@ -6,8 +6,22 @@ import javax.inject.Singleton
 @Singleton
 class UpdateChecker @Inject constructor() {
 
-    fun isUpdateAvailable(currentVersionCode: Long, manifest: UpdateManifest): Boolean {
-        return manifest.versionCode > currentVersionCode
+    fun isUpdateAvailable(
+        currentVersionCode: Long,
+        manifest: UpdateManifest,
+        currentVersionName: String? = null
+    ): Boolean {
+        if (manifest.versionCode > currentVersionCode) {
+            return true
+        }
+        if (manifest.versionCode == currentVersionCode && !currentVersionName.isNullOrBlank()) {
+            val normCurrent = currentVersionName.trim().removePrefix("v")
+            val normManifest = manifest.versionName.trim().removePrefix("v")
+            if (normCurrent.isNotEmpty() && normManifest.isNotEmpty() && normCurrent != normManifest) {
+                return true
+            }
+        }
+        return false
     }
 
     fun isCompatible(currentVersionCode: Long, manifest: UpdateManifest): Boolean {

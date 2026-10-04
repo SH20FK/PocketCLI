@@ -40,12 +40,13 @@ class UpdateRepository @Inject constructor(
 
     suspend fun checkForUpdates(
         currentVersionCode: Long,
-        channel: UpdateChannel = UpdateChannel.STABLE
+        channel: UpdateChannel = UpdateChannel.STABLE,
+        currentVersionName: String? = null
     ): UpdateCheckResult = withContext(Dispatchers.IO) {
         when (val result = releaseApi.fetchLatestManifest(channel = channel)) {
             is ManifestFetchResult.Found -> {
                 val manifest = result.manifest
-                if (updateChecker.isUpdateAvailable(currentVersionCode, manifest)) {
+                if (updateChecker.isUpdateAvailable(currentVersionCode, manifest, currentVersionName)) {
                     UpdateCheckResult.UpdateAvailable(manifest)
                 } else {
                     UpdateCheckResult.UpToDate(currentVersionCode)

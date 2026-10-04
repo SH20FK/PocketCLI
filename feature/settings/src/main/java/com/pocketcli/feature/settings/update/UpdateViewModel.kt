@@ -22,11 +22,7 @@ class UpdateViewModel @Inject constructor(
         UpdateUiState(
             currentVersionName = getAppVersionName(),
             currentVersionCode = getAppVersionCode(),
-            selectedChannel = if (getAppVersionName().contains(Regex("(-beta|-alpha|-rc)", RegexOption.IGNORE_CASE))) {
-                UpdateChannel.BETA
-            } else {
-                UpdateChannel.STABLE
-            }
+            selectedChannel = UpdateChannel.BETA
         )
     )
     val uiState: StateFlow<UpdateUiState> = _uiState.asStateFlow()
@@ -71,9 +67,10 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(status = UpdateStatus.Checking, errorMessage = null) }
             val currentCode = _uiState.value.currentVersionCode
+            val currentName = _uiState.value.currentVersionName
             val channel = _uiState.value.selectedChannel
 
-            val result = updateRepository.checkForUpdates(currentCode, channel)
+            val result = updateRepository.checkForUpdates(currentCode, channel, currentName)
             when (result) {
                 is UpdateCheckResult.UpdateAvailable -> {
                     _uiState.update { it.copy(status = UpdateStatus.Available(result.manifest)) }
