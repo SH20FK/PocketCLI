@@ -238,7 +238,8 @@ open class LocalRuntimeSupervisor(
             env["PORT"] = port.toString()
             env.putAll(providerKeys)
 
-            logBuffer.append("[Supervisor] Команда: ${prootCmd.joinToString(" ")}")
+            val sanitizedCmd = CircularLogBuffer.sanitize(prootCmd.joinToString(" "))
+            logBuffer.append("[Supervisor] Команда: $sanitizedCmd")
             logBuffer.append("[Supervisor] Порт: $port")
 
             val process = processLauncher(prootCmd, env)

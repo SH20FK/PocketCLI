@@ -95,11 +95,13 @@ fun ProjectsScreen(
             )
         },
         floatingActionButton = {
-            AddProjectFabMenu(
-                onCloneClick = { viewModel.openCloneSheet() },
-                onCreateClick = { viewModel.openCreateDialog() },
-                onImportClick = { viewModel.openImportDialog() }
-            )
+            if (displayList.isNotEmpty()) {
+                AddProjectFabMenu(
+                    onCloneClick = { viewModel.openCloneSheet() },
+                    onCreateClick = { viewModel.openCreateDialog() },
+                    onImportClick = { viewModel.openImportDialog() }
+                )
+            }
         },
         modifier = modifier
     ) { innerPadding ->

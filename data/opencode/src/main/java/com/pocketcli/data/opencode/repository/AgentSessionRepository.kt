@@ -467,9 +467,12 @@ class AgentSessionRepository @Inject constructor(
 
             // Deduplicate optimistic user message
             if (role == MessageRole.USER) {
-                val matchingOptimistic = optimisticUserMessages.firstOrNull {
-                    it.messageId != item.info.id && it.text == fullText
-                }
+                val remoteTime = item.info.time?.created ?: 0L
+                val matchingOptimistic = optimisticUserMessages
+                    .filter { it.messageId != item.info.id && it.text.trim() == fullText.trim() }
+                    .minByOrNull {
+                        if (remoteTime > 0L) kotlin.math.abs(it.timestamp - remoteTime) else Long.MAX_VALUE
+                    }
                 if (matchingOptimistic != null) {
                     database.messageDao().delete(profileId, sessionId, matchingOptimistic.messageId)
                     optimisticUserMessages.remove(matchingOptimistic)

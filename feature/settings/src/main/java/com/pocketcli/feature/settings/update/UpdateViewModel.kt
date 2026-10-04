@@ -135,9 +135,11 @@ class UpdateViewModel @Inject constructor(
         _uiState.update { it.copy(status = UpdateStatus.Verifying("Проверка контрольной суммы SHA-256...", manifest)) }
 
         val verifyResult = updateRepository.verifyApk(
-            apkFile,
-            manifest.apk.sha256,
-            manifest.apk.size
+            file = apkFile,
+            expectedSha256 = manifest.apk.sha256,
+            expectedSize = manifest.apk.size,
+            minVersionCode = _uiState.value.currentVersionCode,
+            expectedPackageName = "com.pocketcli"
         )
 
         verifyResult.fold(

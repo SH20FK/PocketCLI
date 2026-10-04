@@ -375,7 +375,10 @@ class ChatViewModel @Inject constructor(
                 }
             } else {
                 val isThisStreaming = isBusy && (msg.id == state.streamingTail?.messageId || msg.id == lastMsgId)
-                nodes.add(ChatNode.AssistantNode(id = uniqueKey("asst", msg.id), message = msg, isStreaming = isThisStreaming))
+                val hasContent = msg.text.isNotBlank() || !msg.reasoning.isNullOrBlank() || isThisStreaming
+                if (hasContent) {
+                    nodes.add(ChatNode.AssistantNode(id = uniqueKey("asst", msg.id), message = msg, isStreaming = isThisStreaming))
+                }
                 for (tool in msg.toolCalls) {
                     nodes.add(ChatNode.ToolNode(id = uniqueKey("tool", tool.callId), toolCall = tool))
                 }

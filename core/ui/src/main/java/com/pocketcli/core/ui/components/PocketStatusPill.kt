@@ -112,7 +112,9 @@ fun PocketStatusPill(
 
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

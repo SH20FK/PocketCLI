@@ -141,6 +141,7 @@ class SessionsViewModel @Inject constructor(
     }
 
     fun selectAgentType(agentType: AgentType) {
+        if (!agentType.isAvailable) return
         _uiState.update { it.copy(selectedAgentType = agentType) }
     }
 

@@ -33,6 +33,13 @@ class ApkVerifier(
             return@withContext Result.failure(IllegalArgumentException("Файл APK не найден: ${apkFile.absolutePath}"))
         }
 
+        val maxAllowedSize = 150L * 1024L * 1024L // 150 MB safety threshold
+        if (apkFile.length() > maxAllowedSize) {
+            return@withContext Result.failure(
+                SecurityException("Размер файла APK (${apkFile.length()} байт) превышает допустимый лимит безопасности 150 МБ")
+            )
+        }
+
         if (expectedSize != null && expectedSize > 0 && apkFile.length() != expectedSize) {
             return@withContext Result.failure(
                 IllegalStateException("Размер файла не совпадает: ожидалось $expectedSize, получено ${apkFile.length()}")
@@ -68,7 +75,7 @@ class ApkVerifier(
                     val archiveInfo = ctx.packageManager.getPackageArchiveInfo(apkFile.absolutePath, flags)
                     if (archiveInfo != null) {
                         val expectedPkg = expectedPackageName ?: ctx.packageName
-                        if (archiveInfo.packageName != expectedPkg && !archiveInfo.packageName.startsWith("com.pocketcli")) {
+                        if (archiveInfo.packageName != expectedPkg) {
                             return@withContext Result.failure(
                                 SecurityException("Имя пакета в APK (${archiveInfo.packageName}) не совпадает с ожидаемым ($expectedPkg)")
                             )

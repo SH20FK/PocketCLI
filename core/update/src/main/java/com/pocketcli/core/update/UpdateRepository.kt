@@ -71,8 +71,20 @@ class UpdateRepository @Inject constructor(
         return downloader.downloadApk(url, targetFile)
     }
 
-    suspend fun verifyApk(file: File, expectedSha256: String, expectedSize: Long?): Result<Boolean> {
-        return verifier.verifyApk(file, expectedSha256, expectedSize)
+    suspend fun verifyApk(
+        file: File,
+        expectedSha256: String,
+        expectedSize: Long?,
+        minVersionCode: Long? = null,
+        expectedPackageName: String? = "com.pocketcli"
+    ): Result<Boolean> {
+        return verifier.verifyApk(
+            apkFile = file,
+            expectedSha256 = expectedSha256,
+            expectedSize = expectedSize,
+            expectedPackageName = expectedPackageName,
+            minVersionCode = minVersionCode
+        )
     }
 
     fun canRequestPackageInstalls(): Boolean {

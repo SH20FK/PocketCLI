@@ -73,4 +73,15 @@ class ApkVerifierTest {
         val result = verifier.verifyApk(file, expectedSha, content.size.toLong())
         assertTrue(result.isSuccess)
     }
+
+    @Test
+    fun `test verifyApk fails when file exceeds 150MB limit`() = runBlocking {
+        val largeFile = tempFolder.newFile("huge.apk")
+        java.io.RandomAccessFile(largeFile, "rw").use { it.setLength(151L * 1024 * 1024) }
+
+        val result = verifier.verifyApk(largeFile, "dummy")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SecurityException)
+        assertTrue(result.exceptionOrNull()?.message?.contains("150 МБ") == true)
+    }
 }

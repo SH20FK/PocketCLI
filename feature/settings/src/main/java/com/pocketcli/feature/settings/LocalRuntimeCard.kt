@@ -29,6 +29,7 @@ fun LocalRuntimeCard(
     onActivate: () -> Unit,
     onOpenLogs: () -> Unit,
     onOpenKeys: () -> Unit,
+    onNavigateToRuntimeCenter: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -229,13 +230,23 @@ fun LocalRuntimeCard(
                 }
             }
 
-            // Bottom action row: Logs & Provider Keys
+            // Bottom action row: Runtime Center, Logs & Provider Keys
             if (installerState is InstallState.Ready) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    if (onNavigateToRuntimeCenter != null) {
+                        OutlinedButton(
+                            onClick = onNavigateToRuntimeCenter,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Центр")
+                        }
+                    }
                     OutlinedButton(
                         onClick = onOpenLogs,
                         modifier = Modifier.weight(1f)
@@ -250,7 +261,7 @@ fun LocalRuntimeCard(
                     ) {
                         Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("API-ключи")
+                        Text("Ключи")
                     }
                 }
             }

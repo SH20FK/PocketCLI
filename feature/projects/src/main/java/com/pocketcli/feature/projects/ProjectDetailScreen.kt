@@ -324,45 +324,57 @@ fun GitTab(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        if (selectedDiff != null) {
-            FileDiffViewer(
-                filePath = selectedDiff,
-                rawUnifiedDiff = """
-                    --- a/$selectedDiff
-                    +++ b/$selectedDiff
-                    @@ -1,3 +1,5 @@
-                     # Initial project commit
-                    +Added OpenCode agent integration
-                    +Enabled PRoot autonomous execution
-                     Final line
-                """.trimIndent(),
-                onClose = onCloseDiff
+        Text(
+            text = "Git репозиторий",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        if (!git.isGitRepo) {
+            Text(
+                text = "Директория проекта не является инициализированным Git-репозиторием.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            Text(
-                text = "Изменённые файлы",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Ветка: ${git.currentBranch ?: "main"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                        if (git.isDirty) {
+                            Text(
+                                text = "Есть изменения",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(
+                                text = "Чисто",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
 
-            if (!git.isGitRepo) {
-                Text(
-                    text = "Проект не является Git репозиторием.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else if (!git.isDirty) {
-                Text(
-                    text = "Нет изменённых файлов. Рабочая копия чистая.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                DiffSummaryCard(
-                    filePath = "src/main/App.kt",
-                    addedLines = 14,
-                    removedLines = 2,
-                    onClick = { onSelectDiff("src/main/App.kt") }
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Детальный просмотр Git-диффов и коммитов находится в разработке (Этап 3). Для просмотра изменений вы можете запросить у агента команду `git status` или `git diff` в чате.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -383,26 +395,34 @@ fun TerminalTab(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Рабочая директория: $workspaceDirectory",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text(
+                text = "Рабочая директория: $workspaceDirectory",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.primary
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "$ opencode serve --port 4096\nServer listening on 127.0.0.1:4096\nReady for agent execution.",
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Интерактивный терминал (PTY) находится в разработке (Этап 3).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Команды выполняются автономно через инструменты ИИ-агента (bash) в сессиях чата. Логи работы PRoot сервера доступны в Настройках -> Логи рантайма.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

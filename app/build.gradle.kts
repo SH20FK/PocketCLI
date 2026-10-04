@@ -13,10 +13,10 @@ android {
 
     val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
         ?: System.getenv("VERSION_CODE")?.toIntOrNull()
-        ?: 1000906
+        ?: 1000907
     val vName = (project.findProperty("versionName") as? String)
         ?: System.getenv("VERSION_NAME")
-        ?: "1.0.9-beta.6"
+        ?: "1.0.9-beta.7"
 
     defaultConfig {
         applicationId = "com.pocketcli"
@@ -29,17 +29,22 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("pocketcli-release.jks")
-            storePassword = project.findProperty("POCKETCLI_KEYSTORE_PASSWORD") as? String
-                ?: System.getenv("POCKETCLI_KEYSTORE_PASSWORD")
-                ?: "pocketcli_release_2026"
-            keyAlias = project.findProperty("POCKETCLI_KEY_ALIAS") as? String
-                ?: System.getenv("POCKETCLI_KEY_ALIAS")
-                ?: "pocketcli"
-            keyPassword = project.findProperty("POCKETCLI_KEY_PASSWORD") as? String
-                ?: System.getenv("POCKETCLI_KEY_PASSWORD")
-                ?: "pocketcli_release_2026"
+        val keystoreFile = file("pocketcli-release.jks")
+        val keystorePassword = project.findProperty("POCKETCLI_KEYSTORE_PASSWORD") as? String
+            ?: System.getenv("POCKETCLI_KEYSTORE_PASSWORD")
+        val keyAliasProp = project.findProperty("POCKETCLI_KEY_ALIAS") as? String
+            ?: System.getenv("POCKETCLI_KEY_ALIAS")
+            ?: "pocketcli"
+        val keyPasswordProp = project.findProperty("POCKETCLI_KEY_PASSWORD") as? String
+            ?: System.getenv("POCKETCLI_KEY_PASSWORD")
+
+        if (keystoreFile.exists() && !keystorePassword.isNullOrBlank() && !keyPasswordProp.isNullOrBlank()) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keyAliasProp
+                keyPassword = keyPasswordProp
+            }
         }
     }
 
@@ -50,11 +55,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
         debug {
             applicationIdSuffix = ".debug"
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

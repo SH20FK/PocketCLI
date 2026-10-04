@@ -105,7 +105,8 @@ fun SettingsScreen(
                     onRestart = { runtimeViewModel.restartServer() },
                     onActivate = { runtimeViewModel.activateLocalProfile() },
                     onOpenLogs = { runtimeViewModel.openLogsDialog() },
-                    onOpenKeys = { runtimeViewModel.openProviderKeysDialog() }
+                    onOpenKeys = { runtimeViewModel.openProviderKeysDialog() },
+                    onNavigateToRuntimeCenter = onNavigateToRuntimeCenter
                 )
             }
 
@@ -265,6 +266,21 @@ fun SettingsScreen(
                 onSelectModel = { runtimeViewModel.setAntigravitySelectedModel(it) },
                 onLogout = { runtimeViewModel.logoutAntigravity() },
                 onDismiss = { runtimeViewModel.dismissAntigravityDialog() }
+            )
+        }
+
+        // Onboarding Dialog (First Run)
+        if (runtimeUiState.showOnboardingDialog) {
+            OnboardingDialog(
+                onSelectLocal = {
+                    runtimeViewModel.dismissOnboardingDialog()
+                    runtimeViewModel.install()
+                },
+                onSelectRemote = {
+                    runtimeViewModel.dismissOnboardingDialog()
+                    viewModel.openAddDialog()
+                },
+                onDismiss = { runtimeViewModel.dismissOnboardingDialog() }
             )
         }
     }

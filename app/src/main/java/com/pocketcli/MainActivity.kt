@@ -51,6 +51,7 @@ import javax.inject.Inject
 @Serializable data class ProjectDetailRoute(val workspaceId: String)
 @Serializable object SettingsRoute
 @Serializable object UpdateRoute
+@Serializable object RuntimeCenterRoute
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -79,9 +80,11 @@ class MainActivity : ComponentActivity() {
                     dest.hasRoute<ChatRoute>() ||
                     dest.hasRoute<ProjectDetailRoute>() ||
                     dest.hasRoute<UpdateRoute>() ||
+                    dest.hasRoute<RuntimeCenterRoute>() ||
                     dest.route?.contains("ChatRoute") == true ||
                     dest.route?.contains("ProjectDetailRoute") == true ||
-                    dest.route?.contains("UpdateRoute") == true
+                    dest.route?.contains("UpdateRoute") == true ||
+                    dest.route?.contains("RuntimeCenterRoute") == true
                 } ?: false
 
                 val selectedTab = when {
@@ -214,7 +217,8 @@ class MainActivity : ComponentActivity() {
                                     val viewModel: SettingsViewModel = hiltViewModel()
                                     SettingsScreen(
                                         viewModel = viewModel,
-                                        onNavigateToUpdate = { navController.navigate(UpdateRoute) }
+                                        onNavigateToUpdate = { navController.navigate(UpdateRoute) },
+                                        onNavigateToRuntimeCenter = { navController.navigate(RuntimeCenterRoute) }
                                     )
                                 }
 
@@ -223,6 +227,20 @@ class MainActivity : ComponentActivity() {
                                     UpdateScreen(
                                         viewModel = updateViewModel,
                                         onNavigateBack = { navController.popBackStack() }
+                                    )
+                                }
+
+                                composable<RuntimeCenterRoute> {
+                                    val runtimeViewModel: com.pocketcli.feature.settings.LocalRuntimeViewModel = hiltViewModel()
+                                    val supervisorState by runtimeViewModel.supervisorState.collectAsState()
+                                    com.pocketcli.feature.settings.RuntimeCenterScreen(
+                                        supervisorState = supervisorState,
+                                        onNavigateBack = { navController.popBackStack() },
+                                        onStart = { runtimeViewModel.startServer() },
+                                        onStop = { runtimeViewModel.stopServer() },
+                                        onRestart = { runtimeViewModel.restartServer() },
+                                        onOpenLogs = { runtimeViewModel.openLogsDialog() },
+                                        onOpenKeys = { runtimeViewModel.openProviderKeysDialog() }
                                     )
                                 }
                             }

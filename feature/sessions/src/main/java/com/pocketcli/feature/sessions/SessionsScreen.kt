@@ -299,24 +299,25 @@ fun SessionsScreen(
                                 }
                             )
                             FilterChip(
-                                selected = uiState.selectedAgentType == AgentType.CLAUDE_CODE,
-                                onClick = { viewModel.selectAgentType(AgentType.CLAUDE_CODE) },
-                                label = { Text("Claude") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                            FilterChip(
                                 selected = uiState.selectedAgentType == AgentType.ANTIGRAVITY,
                                 onClick = { viewModel.selectAgentType(AgentType.ANTIGRAVITY) },
                                 label = { Text("Antigravity") },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                            FilterChip(
+                                selected = false,
+                                onClick = { },
+                                enabled = false,
+                                label = { Text("Claude (скоро)") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -383,100 +384,111 @@ fun SessionItemCard(
 ) {
     val dateFormat = remember { SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()) }
     val formattedDate = remember(session.updatedAt) { dateFormat.format(Date(session.updatedAt)) }
+    var showMenu by remember { mutableStateOf(false) }
+
+    val (agentIcon, agentTint) = when (session.agentType) {
+        AgentType.CLAUDE_CODE -> Icons.Default.Bolt to MaterialTheme.colorScheme.primary
+        AgentType.ANTIGRAVITY -> Icons.Default.AutoAwesome to MaterialTheme.colorScheme.tertiary
+        AgentType.CODEX -> Icons.Default.Code to MaterialTheme.colorScheme.secondary
+        AgentType.OPENCODE -> Icons.Default.SmartToy to MaterialTheme.colorScheme.primary
+    }
 
     Surface(
-        shape = PocketShapes.container,
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
             .fillMaxWidth()
-            .clip(PocketShapes.container)
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(PocketSpacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = session.title.ifBlank { "Диалог без названия" },
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (workspaceName != null) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.height(20.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(10.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = workspaceName,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        modifier = Modifier.height(20.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 6.dp)
-                        ) {
-                            val (agentIcon, agentTint) = when (session.agentType) {
-                                AgentType.CLAUDE_CODE -> Icons.Default.Bolt to MaterialTheme.colorScheme.primary
-                                AgentType.ANTIGRAVITY -> Icons.Default.AutoAwesome to MaterialTheme.colorScheme.tertiary
-                                AgentType.CODEX -> Icons.Default.Code to MaterialTheme.colorScheme.secondary
-                                AgentType.OPENCODE -> Icons.Default.SmartToy to MaterialTheme.colorScheme.primary
-                            }
-                            Icon(
-                                imageVector = agentIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(10.dp),
-                                tint = agentTint
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = session.agentType.displayName,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Surface(
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = agentTint.copy(alpha = 0.15f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = agentIcon,
+                        contentDescription = null,
+                        tint = agentTint,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Удалить сессию",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = session.title.ifBlank { "Диалог без названия" },
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formattedDate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val subtitleParts = buildList {
+                    if (!workspaceName.isNullOrBlank()) add(workspaceName)
+                    add(session.agentType.displayName)
+                }
+
+                Text(
+                    text = subtitleParts.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Опции",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Удалить чат", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }

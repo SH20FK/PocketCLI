@@ -33,7 +33,6 @@ object DatabaseModule {
             AppDatabase::class.java,
             "pocketcli.db"
         ).addMigrations(MIGRATION_2_3)
-            .fallbackToDestructiveMigration()
             .build()
     }
 

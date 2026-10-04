@@ -173,6 +173,23 @@ class LocalRuntimeSupervisorTest {
         assertEquals(0, buffer.getLines().size)
     }
 
+    @Test
+    fun testCircularLogBufferSanitizesSecrets() {
+        val buffer = CircularLogBuffer(capacity = 10)
+        buffer.append("OPENCODE_SERVER_PASSWORD=super_secret_token_12345")
+        buffer.append("Authorization: Bearer sk-secret-token-abcdef1234567890")
+        buffer.append("GEMINI_API_KEY=AIzaSyA1234567890123456789012345678901")
+        buffer.append("ANTHROPIC_API_KEY=sk-ant-api03-abcdef123456789012345")
+        buffer.append("Normal log line without secrets: port 4096")
+
+        val lines = buffer.getLines()
+        assertEquals("OPENCODE_SERVER_PASSWORD=********", lines[0])
+        assertEquals("Authorization: Bearer ********", lines[1])
+        assertEquals("GEMINI_API_KEY=********", lines[2])
+        assertEquals("ANTHROPIC_API_KEY=********", lines[3])
+        assertEquals("Normal log line without secrets: port 4096", lines[4])
+    }
+
     private fun createSupervisor(
         host: String = mockWebServer.hostName,
         port: Int = mockWebServer.port,

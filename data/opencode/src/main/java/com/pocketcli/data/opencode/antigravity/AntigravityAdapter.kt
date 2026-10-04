@@ -419,13 +419,17 @@ class AntigravityAdapter(
                         )
                     }
                 }
-                // Append current user prompt
-                conversationContents.add(
-                    GeminiContent(
-                        role = "user",
-                        parts = listOf(GeminiPart(text = prompt.text))
+                // Append current user prompt only if not already present at the end of history
+                val lastMsg = conversationContents.lastOrNull()
+                val alreadyAppended = lastMsg?.role == "user" && lastMsg.parts.firstOrNull()?.text?.trim() == prompt.text.trim()
+                if (!alreadyAppended && prompt.text.isNotBlank()) {
+                    conversationContents.add(
+                        GeminiContent(
+                            role = "user",
+                            parts = listOf(GeminiPart(text = prompt.text))
+                        )
                     )
-                )
+                }
 
                 var currentTurn = 0
                 val maxTurns = 8
