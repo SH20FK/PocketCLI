@@ -158,6 +158,7 @@ fun ChatScreen(
         if (uiState.isModelPickerOpen) {
             ModelPickerRoute(
                 selectedModelId = uiState.selectedModel?.modelId,
+                agentType = uiState.agentType,
                 onSelectModel = { model ->
                     viewModel.selectModel(model)
                 },

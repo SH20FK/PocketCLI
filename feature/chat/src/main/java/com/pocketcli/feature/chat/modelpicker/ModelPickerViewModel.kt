@@ -2,6 +2,7 @@ package com.pocketcli.feature.chat.modelpicker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pocketcli.core.model.AgentType
 import com.pocketcli.core.model.ModelInfo
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,11 +26,11 @@ class ModelPickerViewModel @Inject constructor(
     private var allModels: List<ModelInfo> = emptyList()
     private var searchJob: Job? = null
 
-    fun loadModels(initialSelectedId: String? = null) {
+    fun loadModels(initialSelectedId: String? = null, agentType: AgentType = AgentType.OPENCODE) {
         _uiState.update { it.copy(isLoading = true, selectedId = initialSelectedId, error = null) }
 
         viewModelScope.launch {
-            val adapter = connectionManager.getAdapter()
+            val adapter = connectionManager.getAdapterFor(agentType) ?: connectionManager.getAdapter()
             if (adapter == null) {
                 _uiState.update {
                     it.copy(

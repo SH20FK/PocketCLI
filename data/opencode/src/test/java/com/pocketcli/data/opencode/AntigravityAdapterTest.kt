@@ -57,6 +57,7 @@ class AntigravityAdapterTest {
         assertTrue(adapter.capabilities.contains(Capability.Permissions))
 
         val models = adapter.getModels().getOrThrow()
+        assertTrue(models.any { it.modelId == "gemini-2.5-flash" })
         assertTrue(models.any { it.modelId == "gemini-3.8-flash-high" })
         assertTrue(models.any { it.modelId == "gemini-3.7-flash-high" })
         assertTrue(models.any { it.modelId == "gemini-3.1-pro-high" })
@@ -99,5 +100,72 @@ class AntigravityAdapterTest {
         val chunk = json.decodeFromString<com.pocketcli.data.opencode.antigravity.GeminiStreamChunk>(sseChunk)
         val text = chunk.response?.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
         assertEquals("Hello from Antigravity", text)
+    }
+
+    @Test
+    fun testAntigravityFunctionCallDeserialization() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val chunkJson = """
+            {
+                "candidates": [
+                    {
+                        "content": {
+                            "role": "model",
+                            "parts": [
+                                {
+                                    "functionCall": {
+                                        "name": "web_search",
+                                        "args": {
+                                            "query": "kotlin coroutines latest release"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "finishReason": "STOP"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val chunk = json.decodeFromString<com.pocketcli.data.opencode.antigravity.GeminiStreamChunk>(chunkJson)
+        val part = chunk.candidates?.firstOrNull()?.content?.parts?.firstOrNull()
+        assertNotNull(part)
+        assertNotNull(part?.functionCall)
+        assertEquals("web_search", part?.functionCall?.name)
+        val query = part?.functionCall?.args?.get("query")
+        assertNotNull(query)
+    }
+
+    @Test
+    fun testAntigravityFunctionResponseSerialization() {
+        val json = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            explicitNulls = false
+        }
+
+        val req = com.pocketcli.data.opencode.antigravity.GeminiGenerateRequest(
+            contents = listOf(
+                com.pocketcli.data.opencode.antigravity.GeminiContent(
+                    role = "function",
+                    parts = listOf(
+                        com.pocketcli.data.opencode.antigravity.GeminiPart(
+                            functionResponse = com.pocketcli.data.opencode.antigravity.GeminiFunctionResponse(
+                                name = "web_search",
+                                response = kotlinx.serialization.json.buildJsonObject {
+                                    put("output", "Kotlin 2.0 released")
+                                }
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val serialized = json.encodeToString(req)
+        assertTrue(serialized.contains("\"functionResponse\""))
+        assertTrue(serialized.contains("\"web_search\""))
+        assertTrue(serialized.contains("\"output\":\"Kotlin 2.0 released\""))
     }
 }

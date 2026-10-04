@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -38,6 +39,7 @@ fun ToolCallCard(
 
     val icon = when (toolCall.name.lowercase()) {
         "bash", "terminal", "command" -> Icons.Default.Terminal
+        "web_search", "google_search", "search" -> Icons.Default.Search
         else -> Icons.Default.Code
     }
 
