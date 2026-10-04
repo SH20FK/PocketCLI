@@ -378,8 +378,7 @@ open class AntigravityAuthManager private constructor(
      * Obtains a valid Bearer token for Google APIs, refreshing it automatically if expired.
      */
     open suspend fun getValidAccessToken(
-        clientId: String = DEFAULT_CLIENT_ID,
-        clientSecret: String = DEFAULT_CLIENT_SECRET
+        clientId: String = DEFAULT_CLIENT_ID
     ): Result<String> = withContext(Dispatchers.IO) {
         val p = prefs
         val encToken = p?.getString(KEY_ACCESS_TOKEN, null)
@@ -396,7 +395,7 @@ open class AntigravityAuthManager private constructor(
 
         // Token expired or nearing expiry; try to refresh
         if (refreshToken.isNotEmpty()) {
-            val refreshResult = refreshAccessToken(refreshToken, clientId, clientSecret)
+            val refreshResult = refreshAccessToken(refreshToken, clientId, DEFAULT_CLIENT_SECRET)
             if (refreshResult.isSuccess) {
                 return@withContext Result.success(refreshResult.getOrThrow())
             }
