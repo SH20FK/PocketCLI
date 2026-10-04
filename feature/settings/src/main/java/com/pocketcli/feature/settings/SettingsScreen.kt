@@ -273,14 +273,14 @@ fun SettingsScreen(
         if (runtimeUiState.showOnboardingDialog) {
             OnboardingDialog(
                 onSelectLocal = {
-                    runtimeViewModel.dismissOnboardingDialog()
+                    runtimeViewModel.dismissOnboarding()
                     runtimeViewModel.install()
                 },
                 onSelectRemote = {
-                    runtimeViewModel.dismissOnboardingDialog()
+                    runtimeViewModel.dismissOnboarding()
                     viewModel.openAddDialog()
                 },
-                onDismiss = { runtimeViewModel.dismissOnboardingDialog() }
+                onDismiss = { runtimeViewModel.dismissOnboarding() }
             )
         }
     }

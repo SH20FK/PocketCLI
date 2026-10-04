@@ -348,7 +348,7 @@ fun GitTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Ветка: ${git.currentBranch ?: "main"}",
+                            text = "Ветка: ${git.branch ?: "main"}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                         )

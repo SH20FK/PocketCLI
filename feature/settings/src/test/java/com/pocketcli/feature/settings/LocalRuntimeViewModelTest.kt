@@ -98,6 +98,9 @@ class LocalRuntimeViewModelTest {
 
         viewModel.dismissOnboarding()
         assertFalse(viewModel.uiState.value.showOnboardingDialog)
+
+        viewModel.dismissOnboardingDialog()
+        assertFalse(viewModel.uiState.value.showOnboardingDialog)
     }
 
     @Test

@@ -79,6 +79,10 @@ class LocalRuntimeViewModel @Inject constructor(
         _uiState.update { it.copy(showOnboardingDialog = false) }
     }
 
+    fun dismissOnboardingDialog() {
+        dismissOnboarding()
+    }
+
     fun openLogsDialog() {
         _uiState.update { it.copy(showLogsDialog = true) }
     }
