@@ -186,6 +186,8 @@ fun AntigravityConfigDialog(
     authState: AntigravityAuthState,
     currentApiKey: String,
     onGetAuthUrl: () -> String = { "" },
+    onStartLoopbackAuth: (((String) -> Unit, (Result<Boolean>) -> Unit) -> Unit)? = null,
+    onCancelLoopbackAuth: (() -> Unit)? = null,
     onImportTokenOrCode: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
     onStartDeviceAuth: (((Result<DeviceAuthCode>) -> Unit) -> Unit)? = null,
     onPollDeviceToken: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
@@ -205,7 +207,10 @@ fun AntigravityConfigDialog(
     val uriHandler = LocalUriHandler.current
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            onCancelLoopbackAuth?.invoke()
+            onDismiss()
+        },
         icon = {
             Icon(
                 imageVector = Icons.Default.AutoAwesome,
@@ -225,7 +230,7 @@ fun AntigravityConfigDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Google DeepMind Advanced Agentic Coding с контекстным окном до 2M токенов, моделями Gemini 3.8/3.7 и потоковым выводом рассуждений.",
+                    text = "Google DeepMind Advanced Agentic Coding с контекстным окном до 2M токенов, официальными моделями Gemini 3.8/3.7 и потоковым выводом рассуждений.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -299,19 +304,65 @@ fun AntigravityConfigDialog(
                                 )
                             }
 
+                            if (authState.isWaitingBrowserAuth) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Ожидание входа в браузере...",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "Подтвердите вход в Google и вернитесь в PocketCLI.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (onCancelLoopbackAuth != null) {
+                                            TextButton(onClick = onCancelLoopbackAuth) {
+                                                Text("Отмена", style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             Button(
                                 onClick = {
                                     authError = null
-                                    val url = onGetAuthUrl().ifEmpty {
-                                        AntigravityAuthManager.getGoogleAuthUrl()
+                                    if (onStartLoopbackAuth != null) {
+                                        onStartLoopbackAuth(
+                                            { authUrl ->
+                                                uriHandler.openUri(authUrl)
+                                            },
+                                            { result ->
+                                                result.onFailure { e ->
+                                                    authError = e.message ?: "Ошибка авторизации через браузер"
+                                                }
+                                            }
+                                        )
+                                    } else {
+                                        val url = onGetAuthUrl().ifEmpty {
+                                            AntigravityAuthManager.getGoogleAuthUrl()
+                                        }
+                                        uriHandler.openUri(url)
                                     }
-                                    uriHandler.openUri(url)
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Войти через Google (Браузер)")
+                                Text(if (authState.isWaitingBrowserAuth) "Открыть браузер снова" else "Войти через Google (Браузер)")
                             }
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -326,7 +377,7 @@ fun AntigravityConfigDialog(
                                 value = manualTokenInput,
                                 onValueChange = { manualTokenInput = it },
                                 label = { Text("URL, код или токен") },
-                                placeholder = { Text("pocketcli://auth?code=... или токен") },
+                                placeholder = { Text("http://127.0.0.1:.../oauth2callback?code=... или токен") },
                                 singleLine = true,
                                 trailingIcon = {
                                     IconButton(

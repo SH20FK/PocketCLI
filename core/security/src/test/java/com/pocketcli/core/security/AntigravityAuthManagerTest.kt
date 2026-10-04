@@ -55,7 +55,10 @@ class AntigravityAuthManagerTest {
         assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/v2/auth"))
         assertTrue(url.contains("client_id="))
         assertTrue(url.contains("response_type=code"))
-        assertTrue(url.contains("pocketcli%3A%2F%2Fauth"))
+        assertTrue(url.contains("oauth2callback"))
+        assertTrue(AntigravityAuthManager.DEFAULT_CLIENT_ID.startsWith("1071006060591"))
+        assertFalse(AntigravityAuthManager.DEFAULT_SCOPES.contains("generative-language"))
+        assertTrue(AntigravityAuthManager.DEFAULT_SCOPES.contains("cloud-platform"))
     }
 
     @Test

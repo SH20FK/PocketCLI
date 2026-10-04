@@ -91,4 +91,13 @@ class AntigravityAdapterTest {
 
         adapter.disconnect()
     }
+
+    @Test
+    fun testAntigravityBoQSerialization() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val sseChunk = """{"response":{"candidates":[{"content":{"role":"model","parts":[{"text":"Hello from Antigravity","thought":false}]}}]}}"""
+        val chunk = json.decodeFromString<com.pocketcli.data.opencode.antigravity.GeminiStreamChunk>(sseChunk)
+        val text = chunk.response?.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+        assertEquals("Hello from Antigravity", text)
+    }
 }

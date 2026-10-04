@@ -52,8 +52,23 @@ data class GeminiCandidate(
 )
 
 @Serializable
+data class AntigravityBoQRequest(
+    val project: String = "aicode-consumers",
+    val model: String,
+    val userAgent: String = "antigravity",
+    val requestType: String = "agent",
+    val request: GeminiGenerateRequest
+)
+
+@Serializable
+data class GeminiInnerResponse(
+    val candidates: List<GeminiCandidate>? = null
+)
+
+@Serializable
 data class GeminiStreamChunk(
     val candidates: List<GeminiCandidate>? = null,
+    val response: GeminiInnerResponse? = null,
     val error: GeminiError? = null
 )
 
@@ -215,13 +230,23 @@ class AntigravityAdapter(
                     generationConfig = GeminiGenerationConfig(temperature = 0.7)
                 )
 
-                val jsonBody = json.encodeToString(requestPayload)
                 val isApiKey = token.startsWith("AIza")
 
-                val url = if (isApiKey) {
-                    "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$token"
+                val (url, jsonBody) = if (isApiKey) {
+                    val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$token"
+                    val body = json.encodeToString(requestPayload)
+                    endpoint to body
                 } else {
-                    "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse"
+                    val endpoint = "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+                    val boqPayload = AntigravityBoQRequest(
+                        project = "aicode-consumers",
+                        model = model,
+                        userAgent = "antigravity",
+                        requestType = "agent",
+                        request = requestPayload
+                    )
+                    val body = json.encodeToString(boqPayload)
+                    endpoint to body
                 }
 
                 val requestBuilder = Request.Builder()
@@ -231,6 +256,7 @@ class AntigravityAdapter(
 
                 if (!isApiKey) {
                     requestBuilder.header("Authorization", "Bearer $token")
+                    requestBuilder.header("User-Agent", "antigravity/cli/1.2.14 (aidev_client; os_type=android; arch=arm64)")
                 }
 
                 val call = okHttpClient.newCall(requestBuilder.build())
@@ -239,7 +265,7 @@ class AntigravityAdapter(
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
                         val errBody = response.body?.string().orEmpty()
-                        val errMsg = "Ошибка Gemini API (HTTP ${response.code}): $errBody"
+                        val errMsg = "Ошибка Antigravity API (HTTP ${response.code}): $errBody"
                         _eventFlow.emit(AgentEvent.Error(errMsg, recoverable = true))
                         _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.ERROR))
                         return@launch
@@ -253,7 +279,7 @@ class AntigravityAdapter(
                             if (jsonLine.isNotEmpty()) {
                                 try {
                                     val chunk = json.decodeFromString<GeminiStreamChunk>(jsonLine)
-                                    val candidate = chunk.candidates?.firstOrNull()
+                                    val candidate = (chunk.response?.candidates ?: chunk.candidates)?.firstOrNull()
                                     candidate?.content?.parts?.forEach { part ->
                                         val text = part.text
                                         if (!text.isNullOrEmpty()) {

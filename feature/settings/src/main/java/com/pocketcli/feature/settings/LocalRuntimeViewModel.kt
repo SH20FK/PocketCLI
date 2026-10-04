@@ -192,6 +192,21 @@ class LocalRuntimeViewModel @Inject constructor(
         return antigravityAuthManager?.getGoogleAuthUrl() ?: ""
     }
 
+    fun startAntigravityLoopbackAuth(
+        onUrlReady: (String) -> Unit,
+        onComplete: (Result<Boolean>) -> Unit
+    ) {
+        if (antigravityAuthManager != null) {
+            antigravityAuthManager.startLoopbackAuth(onUrlReady, onComplete)
+        } else {
+            onComplete(Result.failure(IllegalStateException("AntigravityAuthManager недоступен")))
+        }
+    }
+
+    fun cancelAntigravityLoopbackAuth() {
+        antigravityAuthManager?.cancelLoopbackAuth()
+    }
+
     fun importAntigravityTokenOrCode(input: String, onResult: (Result<Boolean>) -> Unit) {
         viewModelScope.launch {
             if (antigravityAuthManager != null) {

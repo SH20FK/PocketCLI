@@ -238,6 +238,8 @@ fun SettingsScreen(
                 authState = antigravityAuthState,
                 currentApiKey = providerKeys["GEMINI_API_KEY"].orEmpty(),
                 onGetAuthUrl = { runtimeViewModel.getAntigravityAuthUrl() },
+                onStartLoopbackAuth = { onReady, onDone -> runtimeViewModel.startAntigravityLoopbackAuth(onReady, onDone) },
+                onCancelLoopbackAuth = { runtimeViewModel.cancelAntigravityLoopbackAuth() },
                 onImportTokenOrCode = { input, cb -> runtimeViewModel.importAntigravityTokenOrCode(input, cb) },
                 onStartDeviceAuth = { cb -> runtimeViewModel.startAntigravityDeviceAuth(cb) },
                 onPollDeviceToken = { code, cb -> runtimeViewModel.pollAntigravityDeviceToken(code, cb) },

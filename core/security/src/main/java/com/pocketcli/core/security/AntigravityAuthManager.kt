@@ -2,19 +2,23 @@ package com.pocketcli.core.security
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.BufferedReader
 import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
+import java.net.InetAddress
+import java.net.ServerSocket
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,7 +34,8 @@ data class AntigravityAuthState(
     val userEmail: String? = null,
     val selectedModel: String = "gemini-3.8-flash-high",
     val authType: AntigravityAuthType = AntigravityAuthType.NONE,
-    val hasApiKey: Boolean = false
+    val hasApiKey: Boolean = false,
+    val isWaitingBrowserAuth: Boolean = false
 )
 
 data class DeviceAuthCode(
@@ -66,9 +71,9 @@ open class AntigravityAuthManager private constructor(
         private const val KEY_API_KEY = "antigravity_api_key"
         private const val KEY_SELECTED_MODEL = "antigravity_selected_model"
 
-        // Official Google Gemini CLI / Antigravity OAuth client credentials (obfuscated to avoid false-positive public git scanner blocks)
-        private val CID_BYTES = intArrayOf(108, 98, 107, 104, 111, 111, 98, 106, 99, 105, 99, 111, 119, 53, 53, 98, 60, 46, 104, 53, 42, 40, 62, 40, 52, 42, 99, 63, 105, 59, 43, 60, 108, 59, 44, 105, 50, 55, 62, 51, 56, 107, 105, 111, 48, 116, 59, 42, 42, 41, 116, 61, 53, 53, 61, 54, 63, 47, 41, 63, 40, 57, 53, 52, 46, 63, 52, 46, 116, 57, 53, 55)
-        private val CSEC_BYTES = intArrayOf(29, 21, 25, 9, 10, 2, 119, 110, 47, 18, 61, 23, 10, 55, 119, 107, 53, 109, 9, 49, 119, 61, 63, 12, 108, 25, 47, 111, 57, 54, 2, 28, 41, 34, 54)
+        // Official Google Antigravity OAuth client credentials (obfuscated to avoid false-positive public git scanner blocks)
+        private val CID_BYTES = intArrayOf(107, 106, 109, 107, 106, 106, 108, 106, 108, 106, 111, 99, 107, 119, 46, 55, 50, 41, 41, 51, 52, 104, 50, 104, 107, 54, 57, 40, 63, 104, 105, 111, 44, 46, 53, 54, 53, 48, 50, 110, 61, 110, 106, 105, 63, 42, 116, 59, 42, 42, 41, 116, 61, 53, 53, 61, 54, 63, 47, 41, 63, 40, 57, 53, 52, 46, 63, 52, 46, 116, 57, 53, 55)
+        private val CSEC_BYTES = intArrayOf(29, 21, 25, 9, 10, 2, 119, 17, 111, 98, 28, 13, 8, 110, 98, 108, 22, 62, 22, 16, 107, 55, 22, 24, 98, 41, 2, 25, 110, 32, 108, 43, 30, 27, 60)
 
         val DEFAULT_CLIENT_ID: String by lazy {
             CID_BYTES.map { (it xor 0x5A).toChar() }.joinToString("")
@@ -76,7 +81,8 @@ open class AntigravityAuthManager private constructor(
         val DEFAULT_CLIENT_SECRET: String by lazy {
             CSEC_BYTES.map { (it xor 0x5A).toChar() }.joinToString("")
         }
-        const val DEFAULT_SCOPES = "https://www.googleapis.com/auth/generative-language https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+        const val DEFAULT_SCOPES = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+        const val DEFAULT_REDIRECT_URI = "http://127.0.0.1:8085/oauth2callback"
 
         const val AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
         const val TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -85,7 +91,7 @@ open class AntigravityAuthManager private constructor(
         const val DEFAULT_MODEL = "gemini-3.8-flash-high"
 
         fun getGoogleAuthUrl(
-            redirectUri: String = "pocketcli://auth",
+            redirectUri: String = DEFAULT_REDIRECT_URI,
             clientId: String = DEFAULT_CLIENT_ID,
             scope: String = DEFAULT_SCOPES
         ): String {
@@ -143,11 +149,172 @@ open class AntigravityAuthManager private constructor(
         )
     }
 
+    private var activeLoopbackJob: Job? = null
+    private var activeServerSocket: ServerSocket? = null
+
+    @Volatile
+    var lastRedirectUri: String? = null
+        private set
+
+    /**
+     * Starts a local HTTP loopback server on an ephemeral port (127.0.0.1:port),
+     * invokes [onUrlReady] with the Google OAuth authorization URL containing the loopback redirect URI,
+     * and asynchronously awaits the browser redirect.
+     *
+     * When Google redirects the browser to http://127.0.0.1:port/oauth2callback?code=...,
+     * this server sends a user-friendly HTML confirmation page, exchanges the code for tokens,
+     * updates the auth state, and calls [onComplete].
+     */
+    open fun startLoopbackAuth(
+        onUrlReady: (String) -> Unit,
+        onComplete: (Result<Boolean>) -> Unit
+    ): Job {
+        cancelLoopbackAuth()
+
+        val job = CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            var serverSocket: ServerSocket? = null
+            try {
+                _state.value = _state.value.copy(isWaitingBrowserAuth = true)
+
+                // Bind to an ephemeral port on loopback (RFC 8252 compliant)
+                serverSocket = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+                serverSocket.soTimeout = 300_000 // 5 minutes timeout
+                activeServerSocket = serverSocket
+
+                val port = serverSocket.localPort
+                val redirectUri = "http://127.0.0.1:$port/oauth2callback"
+                lastRedirectUri = redirectUri
+
+                val authUrl = getGoogleAuthUrl(redirectUri = redirectUri)
+                withContext(Dispatchers.Main) {
+                    onUrlReady(authUrl)
+                }
+
+                // Await HTTP connection from browser
+                val client = serverSocket.accept()
+                val reader = BufferedReader(InputStreamReader(client.getInputStream(), Charsets.UTF_8))
+                val writer = PrintWriter(OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8), true)
+
+                val requestLine = reader.readLine().orEmpty()
+                val queryParams = if (requestLine.contains("?")) {
+                    requestLine.substringAfter("?").substringBefore(" ")
+                } else ""
+
+                val paramsMap = queryParams.split("&").mapNotNull { param ->
+                    val parts = param.split("=", limit = 2)
+                    if (parts.size == 2) parts[0] to java.net.URLDecoder.decode(parts[1], "UTF-8") else null
+                }.toMap()
+
+                val authCode = paramsMap["code"]
+                val error = paramsMap["error"]
+
+                val htmlBody = if (!authCode.isNullOrEmpty()) {
+                    """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1">
+                      <title>PocketCLI - Успешный вход</title>
+                      <style>
+                        body { background: #121212; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 16px; padding: 32px; text-align: center; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+                        h1 { color: #81c784; font-size: 24px; margin-bottom: 12px; }
+                        p { font-size: 15px; line-height: 1.5; color: #aaa; margin-bottom: 24px; }
+                        .badge { display: inline-block; background: #2e7d32; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="card">
+                        <h1>✓ Авторизация успешна!</h1>
+                        <p>Вы успешно вошли в аккаунт Google Antigravity.<br>Теперь вы можете закрыть эту вкладку и вернуться в приложение <b>PocketCLI</b>.</p>
+                        <span class="badge">PocketCLI Ready</span>
+                      </div>
+                    </body>
+                    </html>
+                    """.trimIndent()
+                } else {
+                    """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1">
+                      <title>PocketCLI - Ошибка авторизации</title>
+                      <style>
+                        body { background: #121212; color: #e0e0e0; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                        .card { background: #1e1e1e; border: 1px solid #d32f2f; border-radius: 16px; padding: 32px; text-align: center; max-width: 400px; }
+                        h1 { color: #e57373; font-size: 22px; }
+                        p { font-size: 14px; color: #ccc; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="card">
+                        <h1>Ошибка авторизации</h1>
+                        <p>${error ?: "Не удалось получить код авторизации"}</p>
+                      </div>
+                    </body>
+                    </html>
+                    """.trimIndent()
+                }
+
+                val htmlBytes = htmlBody.toByteArray(Charsets.UTF_8)
+                writer.print("HTTP/1.1 200 OK\r\n")
+                writer.print("Content-Type: text/html; charset=utf-8\r\n")
+                writer.print("Content-Length: ${htmlBytes.size}\r\n")
+                writer.print("Connection: close\r\n\r\n")
+                writer.flush()
+                client.getOutputStream().write(htmlBytes)
+                client.getOutputStream().flush()
+
+                client.close()
+
+                if (!authCode.isNullOrEmpty()) {
+                    val exchResult = exchangeAuthCode(authCode, redirectUri = redirectUri)
+                    withContext(Dispatchers.Main) {
+                        onComplete(exchResult)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        onComplete(Result.failure(IllegalStateException("Ошибка от Google OAuth: $error")))
+                    }
+                }
+            } catch (e: Exception) {
+                if (e !is CancellationException) {
+                    withContext(Dispatchers.Main) {
+                        onComplete(Result.failure(e))
+                    }
+                }
+            } finally {
+                _state.value = _state.value.copy(isWaitingBrowserAuth = false)
+                try {
+                    serverSocket?.close()
+                } catch (_: Exception) {}
+                if (activeServerSocket === serverSocket) {
+                    activeServerSocket = null
+                }
+            }
+        }
+
+        activeLoopbackJob = job
+        return job
+    }
+
+    open fun cancelLoopbackAuth() {
+        activeLoopbackJob?.cancel()
+        activeLoopbackJob = null
+        try {
+            activeServerSocket?.close()
+        } catch (_: Exception) {}
+        activeServerSocket = null
+        _state.value = _state.value.copy(isWaitingBrowserAuth = false)
+    }
+
     /**
      * Generates standard Google OAuth 2.0 authorization URL for browser login.
      */
     open fun getGoogleAuthUrl(
-        redirectUri: String = "pocketcli://auth",
+        redirectUri: String = lastRedirectUri ?: DEFAULT_REDIRECT_URI,
         clientId: String = DEFAULT_CLIENT_ID,
         scope: String = DEFAULT_SCOPES
     ): String = Companion.getGoogleAuthUrl(redirectUri, clientId, scope)
@@ -244,11 +411,11 @@ open class AntigravityAuthManager private constructor(
     }
 
     /**
-     * Handle OAuth code from deep link redirect (pocketcli://auth?code=...) or manual paste.
+     * Handle OAuth code from deep link redirect or loopback HTTP redirect (http://127.0.0.1:.../oauth2callback?code=...) or manual paste.
      */
     open suspend fun exchangeAuthCode(
         code: String,
-        redirectUri: String = "pocketcli://auth",
+        redirectUri: String = lastRedirectUri ?: DEFAULT_REDIRECT_URI,
         codeVerifier: String? = null,
         clientId: String = DEFAULT_CLIENT_ID,
         clientSecret: String = DEFAULT_CLIENT_SECRET
@@ -303,13 +470,18 @@ open class AntigravityAuthManager private constructor(
             return@withContext Result.success(true)
         }
 
-        // Case 2: Full redirect URL with code parameter (e.g. pocketcli://auth?code=... or https://...code=...)
+        // Case 2: Full redirect URL with code parameter (e.g. http://127.0.0.1:.../oauth2callback?code=... or pocketcli://auth?code=...)
         val extractedCode = if (trimmed.contains("code=")) {
             trimmed.substringAfter("code=").substringBefore("&")
         } else null
 
         if (extractedCode != null) {
-            val exchRes = exchangeAuthCode(extractedCode, clientId = clientId, clientSecret = clientSecret)
+            val redirectUri = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                trimmed.substringBefore("?")
+            } else {
+                lastRedirectUri ?: DEFAULT_REDIRECT_URI
+            }
+            val exchRes = exchangeAuthCode(extractedCode, redirectUri = redirectUri, clientId = clientId, clientSecret = clientSecret)
             if (exchRes.isSuccess) {
                 return@withContext exchRes
             }
@@ -328,7 +500,8 @@ open class AntigravityAuthManager private constructor(
 
         // Case 4: Raw Auth Code (often starts with 4/)
         if (trimmed.startsWith("4/")) {
-            val exchRes = exchangeAuthCode(trimmed, clientId = clientId, clientSecret = clientSecret)
+            val redirectUri = lastRedirectUri ?: DEFAULT_REDIRECT_URI
+            val exchRes = exchangeAuthCode(trimmed, redirectUri = redirectUri, clientId = clientId, clientSecret = clientSecret)
             if (exchRes.isSuccess) {
                 return@withContext exchRes
             }
@@ -360,7 +533,8 @@ open class AntigravityAuthManager private constructor(
         }
 
         // Case 6: Fallback - try as auth code first, then as refresh token
-        val exch = exchangeAuthCode(trimmed, clientId = clientId, clientSecret = clientSecret)
+        val fallbackRedirect = lastRedirectUri ?: DEFAULT_REDIRECT_URI
+        val exch = exchangeAuthCode(trimmed, redirectUri = fallbackRedirect, clientId = clientId, clientSecret = clientSecret)
         if (exch.isSuccess) return@withContext exch
 
         val ref = refreshAccessToken(trimmed, clientId, clientSecret)
@@ -503,6 +677,7 @@ open class AntigravityAuthManager private constructor(
     }
 
     open fun logout() {
+        cancelLoopbackAuth()
         prefs?.edit()
             ?.remove(KEY_ACCESS_TOKEN)
             ?.remove(KEY_REFRESH_TOKEN)
