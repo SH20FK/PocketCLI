@@ -157,7 +157,7 @@ class AntigravityAdapter(
 
     override suspend fun sendPrompt(sessionId: String, prompt: Prompt): Result<Unit> {
         val model = prompt.model?.modelId
-            ?: authManager.state.value.selectedModel.ifEmpty { "gemini-2.5-pro" }
+            ?: authManager.state.value.selectedModel.ifEmpty { AntigravityAuthManager.DEFAULT_MODEL }
 
         val activeJob = activeJobs[sessionId]
         if (activeJob?.isActive == true) {
@@ -291,10 +291,15 @@ class AntigravityAdapter(
     override suspend fun getModels(): Result<List<ModelInfo>> {
         return Result.success(
             listOf(
-                ModelInfo("google", "gemini-2.5-pro", "Gemini 2.5 Pro (DeepMind Flagship)"),
-                ModelInfo("google", "gemini-2.5-flash", "Gemini 2.5 Flash (Ultra-Fast Coding)"),
-                ModelInfo("google", "gemini-2.0-flash-thinking", "Gemini 2.0 Flash Thinking (Deep Reasoning)"),
-                ModelInfo("google", "gemini-2.0-flash", "Gemini 2.0 Flash (General Purpose)")
+                ModelInfo("google", "gemini-3.8-flash-high", "Gemini 3.8 Flash (High Reasoning - Флагман 2026)"),
+                ModelInfo("google", "gemini-3.8-flash-medium", "Gemini 3.8 Flash (Medium Reasoning)"),
+                ModelInfo("google", "gemini-3.8-flash-low", "Gemini 3.8 Flash (Low Latency)"),
+                ModelInfo("google", "gemini-3.7-flash-high", "Gemini 3.7 Flash (High Reasoning)"),
+                ModelInfo("google", "gemini-3.6-flash-high", "Gemini 3.6 Flash (High Reasoning)"),
+                ModelInfo("google", "gemini-3.1-pro-high", "Gemini 3.1 Pro (Advanced Reasoning)"),
+                ModelInfo("anthropic", "claude-sonnet-4-6", "Claude Sonnet 4.6 (Thinking)"),
+                ModelInfo("anthropic", "claude-opus-4-6-thinking", "Claude Opus 4.6 (Deep Thinking)"),
+                ModelInfo("openai", "gpt-oss-120b-medium", "GPT-OSS 120B (Medium)")
             )
         )
     }

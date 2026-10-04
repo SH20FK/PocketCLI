@@ -57,9 +57,10 @@ class AntigravityAdapterTest {
         assertTrue(adapter.capabilities.contains(Capability.Permissions))
 
         val models = adapter.getModels().getOrThrow()
-        assertTrue(models.any { it.modelId == "gemini-2.5-pro" })
-        assertTrue(models.any { it.modelId == "gemini-2.5-flash" })
-        assertTrue(models.any { it.modelId == "gemini-2.0-flash-thinking" })
+        assertTrue(models.any { it.modelId == "gemini-3.8-flash-high" })
+        assertTrue(models.any { it.modelId == "gemini-3.7-flash-high" })
+        assertTrue(models.any { it.modelId == "gemini-3.1-pro-high" })
+        assertTrue(models.any { it.modelId == "claude-sonnet-4-6" })
 
         val sessionResult = adapter.createSession("Antigravity Test Session")
         assertTrue(sessionResult.isSuccess)

@@ -188,6 +188,21 @@ class LocalRuntimeViewModel @Inject constructor(
         }
     }
 
+    fun getAntigravityAuthUrl(): String {
+        return antigravityAuthManager?.getGoogleAuthUrl() ?: ""
+    }
+
+    fun importAntigravityTokenOrCode(input: String, onResult: (Result<Boolean>) -> Unit) {
+        viewModelScope.launch {
+            if (antigravityAuthManager != null) {
+                val res = antigravityAuthManager.importTokenOrCode(input)
+                onResult(res)
+            } else {
+                onResult(Result.failure(IllegalStateException("AntigravityAuthManager недоступен")))
+            }
+        }
+    }
+
     fun startAntigravityDeviceAuth(onResult: (Result<DeviceAuthCode>) -> Unit) {
         viewModelScope.launch {
             if (antigravityAuthManager != null) {

@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.pocketcli.core.security.AntigravityAuthManager
 import com.pocketcli.core.security.AntigravityAuthState
 import com.pocketcli.core.security.AntigravityAuthType
 import com.pocketcli.core.security.DeviceAuthCode
@@ -39,7 +40,7 @@ fun ClaudeCodeConfigDialog(
 ) {
     var apiKeyDraft by remember(currentApiKey) { mutableStateOf(currentApiKey) }
     var isKeyVisible by remember { mutableStateOf(false) }
-    var selectedModel by remember { mutableStateOf("claude-3-7-sonnet") }
+    var selectedModel by remember { mutableStateOf("claude-sonnet-4-6") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -116,6 +117,8 @@ fun ClaudeCodeConfigDialog(
                 )
 
                 val models = listOf(
+                    "claude-sonnet-4-6" to "Claude Sonnet 4.6 (Thinking - Флагман 2026)",
+                    "claude-opus-4-6-thinking" to "Claude Opus 4.6 (Deep Thinking)",
                     "claude-3-7-sonnet" to "Claude 3.7 Sonnet (Hybrid)",
                     "claude-3-5-sonnet" to "Claude 3.5 Sonnet",
                     "claude-3-5-haiku" to "Claude 3.5 Haiku"
@@ -182,8 +185,10 @@ fun ClaudeCodeConfigDialog(
 fun AntigravityConfigDialog(
     authState: AntigravityAuthState,
     currentApiKey: String,
-    onStartDeviceAuth: ((Result<DeviceAuthCode>) -> Unit) -> Unit,
-    onPollDeviceToken: (String, (Result<Boolean>) -> Unit) -> Unit,
+    onGetAuthUrl: () -> String = { "" },
+    onImportTokenOrCode: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
+    onStartDeviceAuth: (((Result<DeviceAuthCode>) -> Unit) -> Unit)? = null,
+    onPollDeviceToken: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
     onSaveKey: (String) -> Unit,
     onSelectModel: (String) -> Unit,
     onLogout: () -> Unit,
@@ -192,11 +197,8 @@ fun AntigravityConfigDialog(
     var apiKeyDraft by remember(currentApiKey) { mutableStateOf(currentApiKey) }
     var isKeyVisible by remember { mutableStateOf(false) }
     var selectedModel by remember(authState.selectedModel) { mutableStateOf(authState.selectedModel) }
-
-    // Device Flow UI state
-    var isStartingAuth by remember { mutableStateOf(false) }
-    var isPollingAuth by remember { mutableStateOf(false) }
-    var deviceCodeData by remember { mutableStateOf<DeviceAuthCode?>(null) }
+    var manualTokenInput by remember { mutableStateOf("") }
+    var isImporting by remember { mutableStateOf(false) }
     var authError by remember { mutableStateOf<String?>(null) }
 
     val clipboardManager = LocalClipboardManager.current
@@ -223,7 +225,7 @@ fun AntigravityConfigDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Google DeepMind Advanced Agentic Coding с контекстным окном до 2M токенов и потоковым выводом рассуждений.",
+                    text = "Google DeepMind Advanced Agentic Coding с контекстным окном до 2M токенов, моделями Gemini 3.8/3.7 и потоковым выводом рассуждений.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -270,149 +272,107 @@ fun AntigravityConfigDialog(
                         }
                     }
                 } else {
-                    // Not authenticated: Google OAuth login button or Device Code prompt
-                    if (deviceCodeData == null) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.fillMaxWidth()
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                            Text(
+                                text = "Авторизация Google OAuth",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = "Войдите через браузер для официального доступа к Gemini 3.8/3.7 и Antigravity CLI без ограничений.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            if (authError != null) {
                                 Text(
-                                    text = "Авторизация Google OAuth",
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    text = "Войдите в Google аккаунт для доступа к моделям Gemini 2.5 Pro и Gemini Flash через Antigravity CLI.",
+                                    text = authError.orEmpty(),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.error
                                 )
+                            }
 
-                                if (authError != null) {
-                                    Text(
-                                        text = authError.orEmpty(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                            Button(
+                                onClick = {
+                                    authError = null
+                                    val url = onGetAuthUrl().ifEmpty {
+                                        AntigravityAuthManager.getGoogleAuthUrl()
+                                    }
+                                    uriHandler.openUri(url)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Войти через Google (Браузер)")
+                            }
 
-                                Button(
-                                    onClick = {
-                                        isStartingAuth = true
-                                        authError = null
-                                        onStartDeviceAuth { result ->
-                                            isStartingAuth = false
-                                            result.onSuccess { code ->
-                                                deviceCodeData = code
-                                                isPollingAuth = true
-                                                onPollDeviceToken(code.deviceCode) { pollResult ->
-                                                    isPollingAuth = false
-                                                    pollResult.onFailure { err ->
-                                                        authError = err.message
-                                                    }
-                                                }
-                                            }.onFailure { err ->
-                                                authError = err.message
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            Text(
+                                text = "Или вставьте код из редиректа / токен / ключ:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            OutlinedTextField(
+                                value = manualTokenInput,
+                                onValueChange = { manualTokenInput = it },
+                                label = { Text("URL, код или токен") },
+                                placeholder = { Text("pocketcli://auth?code=... или токен") },
+                                singleLine = true,
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            val clip = clipboardManager.getText()?.text
+                                            if (!clip.isNullOrBlank()) {
+                                                manualTokenInput = clip.trim()
                                             }
                                         }
-                                    },
-                                    enabled = !isStartingAuth,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    if (isStartingAuth) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Вставить из буфера")
                                     }
-                                    Text("Войти через Google")
-                                }
-                            }
-                        }
-                    } else {
-                        // Display Device Code card
-                        val code = deviceCodeData!!
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Button(
+                                onClick = {
+                                    if (manualTokenInput.isNotBlank()) {
+                                        isImporting = true
+                                        authError = null
+                                        if (onImportTokenOrCode != null) {
+                                            onImportTokenOrCode(manualTokenInput) { res ->
+                                                isImporting = false
+                                                res.onFailure { e ->
+                                                    authError = e.message ?: "Ошибка активации токена"
+                                                }
+                                            }
+                                        } else {
+                                            onSaveKey(manualTokenInput)
+                                            isImporting = false
+                                        }
+                                    }
+                                },
+                                enabled = manualTokenInput.isNotBlank() && !isImporting,
+                                modifier = Modifier.align(Alignment.End)
                             ) {
-                                Text(
-                                    text = "Код подтверждения устройства",
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = code.userCode,
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                if (isImporting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
+                                    Spacer(modifier = Modifier.width(6.dp))
                                 }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            clipboardManager.setText(AnnotatedString(code.userCode))
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Скопировать")
-                                    }
-                                    Button(
-                                        onClick = {
-                                            uriHandler.openUri(code.verificationUrl)
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Открыть сайт")
-                                    }
-                                }
-
-                                if (isPollingAuth) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "Ожидание подтверждения в Google...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                }
-
-                                if (authError != null) {
-                                    Text(
-                                        text = authError.orEmpty(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                                Text("Применить")
                             }
                         }
                     }
@@ -425,10 +385,15 @@ fun AntigravityConfigDialog(
                 )
 
                 val models = listOf(
-                    "gemini-2.5-pro" to "Gemini 2.5 Pro (DeepMind SOTA)",
-                    "gemini-2.5-flash" to "Gemini 2.5 Flash (Быстрая генерация)",
-                    "gemini-2.0-flash-thinking" to "Gemini 2.0 Flash Thinking (Мысли вслух)",
-                    "gemini-2.0-flash" to "Gemini 2.0 Flash (Общие задачи)"
+                    "gemini-3.8-flash-high" to "Gemini 3.8 Flash (High Reasoning - Флагман 2026)",
+                    "gemini-3.8-flash-medium" to "Gemini 3.8 Flash (Medium Reasoning)",
+                    "gemini-3.8-flash-low" to "Gemini 3.8 Flash (Низкая задержка)",
+                    "gemini-3.7-flash-high" to "Gemini 3.7 Flash (High Reasoning)",
+                    "gemini-3.6-flash-high" to "Gemini 3.6 Flash (High Reasoning)",
+                    "gemini-3.1-pro-high" to "Gemini 3.1 Pro (Advanced Reasoning)",
+                    "claude-sonnet-4-6" to "Claude Sonnet 4.6 (Thinking)",
+                    "claude-opus-4-6-thinking" to "Claude Opus 4.6 (Deep Thinking)",
+                    "gpt-oss-120b-medium" to "GPT-OSS 120B (Medium)"
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
