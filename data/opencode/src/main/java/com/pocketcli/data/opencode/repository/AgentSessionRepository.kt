@@ -295,23 +295,61 @@ class AgentSessionRepository @Inject constructor(
                     updated
                 }
 
-                // If tool call is finished, flush it to Room
+                // If tool call is finished, flush it to Room safely
                 if (event.status == ToolStatus.COMPLETED || event.status == ToolStatus.ERROR) {
                     scope.launch {
-                        val (sanitizedOutput, isTruncated) = DbSanitizer.sanitizeOutput(event.output)
-                        database.toolCallDao().upsert(
-                            ToolCallEntity(
-                                profileId = profileId,
-                                sessionId = sessionId,
-                                messageId = event.messageId,
-                                callId = event.callId,
-                                name = event.name,
-                                status = event.status.name,
-                                inputJson = event.input,
-                                output = sanitizedOutput,
-                                isTruncated = isTruncated
+                        try {
+                            // Ensure session exists to satisfy FK
+                            val existingSession = database.sessionDao().getSession(profileId, sessionId)
+                            if (existingSession == null) {
+                                database.sessionDao().upsert(
+                                    SessionEntity(
+                                        profileId = profileId,
+                                        sessionId = sessionId,
+                                        title = "Диалог",
+                                        updatedAt = System.currentTimeMillis(),
+                                        createdAt = System.currentTimeMillis()
+                                    )
+                                )
+                            }
+
+                            val inFlight = inFlightMessages.value[sessionId]
+                            if (inFlight != null && inFlight.id == event.messageId) {
+                                database.messageDao().upsert(inFlight.toEntity())
+                            } else {
+                                val existingMsg = database.messageDao().getMessage(profileId, sessionId, event.messageId)
+                                if (existingMsg == null) {
+                                    database.messageDao().upsert(
+                                        MessageEntity(
+                                            profileId = profileId,
+                                            sessionId = sessionId,
+                                            messageId = event.messageId,
+                                            role = MessageRole.ASSISTANT.name,
+                                            text = "",
+                                            timestamp = System.currentTimeMillis()
+                                        )
+                                    )
+                                }
+                            }
+                            val (sanitizedOutput, isTruncated) = DbSanitizer.sanitizeOutput(event.output)
+                            database.toolCallDao().upsert(
+                                ToolCallEntity(
+                                    profileId = profileId,
+                                    sessionId = sessionId,
+                                    messageId = event.messageId,
+                                    callId = event.callId,
+                                    name = event.name,
+                                    status = event.status.name,
+                                    inputJson = event.input,
+                                    output = sanitizedOutput,
+                                    isTruncated = isTruncated
+                                )
                             )
-                        )
+                        } catch (e: Exception) {
+                            try {
+                                android.util.Log.e("AgentSessionRepository", "Error persisting tool call: ${e.message}", e)
+                            } catch (_: Throwable) {}
+                        }
                     }
                 }
             }
@@ -329,33 +367,53 @@ class AgentSessionRepository @Inject constructor(
     fun flushInFlightToDb(sessionId: String) {
         val inFlight = inFlightMessages.value[sessionId] ?: return
         scope.launch {
-            // Write completed message entity
-            database.messageDao().upsert(inFlight.toEntity())
+            try {
+                // Ensure session exists
+                val existingSession = database.sessionDao().getSession(inFlight.profileId, sessionId)
+                if (existingSession == null) {
+                    database.sessionDao().upsert(
+                        SessionEntity(
+                            profileId = inFlight.profileId,
+                            sessionId = sessionId,
+                            title = "Диалог",
+                            updatedAt = System.currentTimeMillis(),
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                }
 
-            // Write completed tool calls
-            val toolEntities = inFlight.activeToolCalls.values.map { tool ->
-                val (sanitized, isTrunc) = DbSanitizer.sanitizeOutput(tool.output)
-                ToolCallEntity(
-                    profileId = inFlight.profileId,
-                    sessionId = sessionId,
-                    messageId = inFlight.id,
-                    callId = tool.callId,
-                    name = tool.name,
-                    status = tool.status.name,
-                    inputJson = tool.inputJson,
-                    output = sanitized,
-                    isTruncated = isTrunc
-                )
-            }
-            if (toolEntities.isNotEmpty()) {
-                database.toolCallDao().upsertAll(toolEntities)
-            }
+                // Write completed message entity
+                database.messageDao().upsert(inFlight.toEntity())
 
-            // Clear in-flight state
-            inFlightMessages.update { map ->
-                val updated = map.toMutableMap()
-                updated.remove(sessionId)
-                updated
+                // Write completed tool calls
+                val toolEntities = inFlight.activeToolCalls.values.map { tool ->
+                    val (sanitized, isTrunc) = DbSanitizer.sanitizeOutput(tool.output)
+                    ToolCallEntity(
+                        profileId = inFlight.profileId,
+                        sessionId = sessionId,
+                        messageId = inFlight.id,
+                        callId = tool.callId,
+                        name = tool.name,
+                        status = tool.status.name,
+                        inputJson = tool.inputJson,
+                        output = sanitized,
+                        isTruncated = isTrunc
+                    )
+                }
+                if (toolEntities.isNotEmpty()) {
+                    database.toolCallDao().upsertAll(toolEntities)
+                }
+            } catch (e: Exception) {
+                try {
+                    android.util.Log.e("AgentSessionRepository", "Error in flushInFlightToDb: ${e.message}", e)
+                } catch (_: Throwable) {}
+            } finally {
+                // Clear in-flight state
+                inFlightMessages.update { map ->
+                    val updated = map.toMutableMap()
+                    updated.remove(sessionId)
+                    updated
+                }
             }
         }
     }

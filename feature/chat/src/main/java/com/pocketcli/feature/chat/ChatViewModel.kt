@@ -110,7 +110,13 @@ class ChatViewModel @Inject constructor(
                     }
                     .catch { /* Stream closed cleanly without crashing */ }
                     .collect { event ->
-                        repository.handleAgentEvent(resolvedProfileId, sessionId, event)
+                        try {
+                            repository.handleAgentEvent(resolvedProfileId, sessionId, event)
+                        } catch (e: Exception) {
+                            try {
+                                android.util.Log.e("ChatViewModel", "Error handling agent event: ${e.message}", e)
+                            } catch (_: Throwable) {}
+                        }
 
                         when (event) {
                             is AgentEvent.SessionStatus -> {
@@ -118,7 +124,7 @@ class ChatViewModel @Inject constructor(
                                     val nextState = current.copy(sessionState = event.state)
                                     syncNodesAndComposer(nextState)
                                 }
-                                if (event.state == SessionState.IDLE) {
+                                if (event.state == SessionState.IDLE || event.state == SessionState.ERROR) {
                                     val client = (targetAdapter as? OpenCodeAdapter)?.apiClient
                                     if (client != null && resolvedProfileId.isNotEmpty()) {
                                         launch {
@@ -127,65 +133,74 @@ class ChatViewModel @Inject constructor(
                                     }
                                 }
                             }
- is AgentEvent.PermissionRequested -> {
- _uiState.update { current ->
- val nextState = current.copy(pendingPermission = event)
- syncNodesAndComposer(nextState)
- }
- }
- is AgentEvent.TodoUpdate -> {
- _uiState.update { current ->
- val nextState = current.copy(todos = event.todos)
- syncNodesAndComposer(nextState)
- }
- }
- is AgentEvent.FileDiff -> {
- _uiState.update { current ->
- val nextState = current.copy(activeDiffFile = Pair(event.path, event.unifiedDiff))
- syncNodesAndComposer(nextState)
- }
- }
- is AgentEvent.TextDelta -> {
- _uiState.update { current ->
- val tail = StreamingTailUi(
- messageId = event.messageId,
- visibleText = event.text,
- phase = AgentPhase.STREAMING_TEXT
- )
- val nextState = current.copy(streamingTail = tail)
- syncNodesAndComposer(nextState)
- }
- }
- is AgentEvent.ReasoningDelta -> {
- _uiState.update { current ->
- val tail = StreamingTailUi(
- messageId = event.messageId,
- visibleText = event.text,
- phase = AgentPhase.THINKING
- )
- val nextState = current.copy(streamingTail = tail)
- syncNodesAndComposer(nextState)
- }
- }
- is AgentEvent.ToolCallUpdate -> {
- _uiState.update { current ->
- val tail = StreamingTailUi(
- messageId = event.messageId,
- visibleText = "",
- phase = AgentPhase.EXECUTING_TOOL,
- currentTool = ToolSummary(
- callId = event.callId,
- name = event.name,
- status = event.status
- )
- )
- val nextState = current.copy(streamingTail = tail)
- syncNodesAndComposer(nextState)
- }
- }
- else -> Unit
- }
- }
+                            is AgentEvent.Error -> {
+                                _uiState.update { current ->
+                                    val nextState = current.copy(
+                                        errorMessage = event.message,
+                                        sessionState = SessionState.ERROR
+                                    )
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.PermissionRequested -> {
+                                _uiState.update { current ->
+                                    val nextState = current.copy(pendingPermission = event)
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.TodoUpdate -> {
+                                _uiState.update { current ->
+                                    val nextState = current.copy(todos = event.todos)
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.FileDiff -> {
+                                _uiState.update { current ->
+                                    val nextState = current.copy(activeDiffFile = Pair(event.path, event.unifiedDiff))
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.TextDelta -> {
+                                _uiState.update { current ->
+                                    val tail = StreamingTailUi(
+                                        messageId = event.messageId,
+                                        visibleText = event.text,
+                                        phase = AgentPhase.STREAMING_TEXT
+                                    )
+                                    val nextState = current.copy(streamingTail = tail)
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.ReasoningDelta -> {
+                                _uiState.update { current ->
+                                    val tail = StreamingTailUi(
+                                        messageId = event.messageId,
+                                        visibleText = event.text,
+                                        phase = AgentPhase.THINKING
+                                    )
+                                    val nextState = current.copy(streamingTail = tail)
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            is AgentEvent.ToolCallUpdate -> {
+                                _uiState.update { current ->
+                                    val tail = StreamingTailUi(
+                                        messageId = event.messageId,
+                                        visibleText = "",
+                                        phase = AgentPhase.EXECUTING_TOOL,
+                                        currentTool = ToolSummary(
+                                            callId = event.callId,
+                                            name = event.name,
+                                            status = event.status
+                                        )
+                                    )
+                                    val nextState = current.copy(streamingTail = tail)
+                                    syncNodesAndComposer(nextState)
+                                }
+                            }
+                            else -> Unit
+                        }
+                    }
  }
  }
  }

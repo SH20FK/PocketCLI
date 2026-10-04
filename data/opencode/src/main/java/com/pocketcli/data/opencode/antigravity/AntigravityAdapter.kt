@@ -8,7 +8,10 @@ import com.pocketcli.data.local.db.SessionEntity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -80,6 +83,13 @@ data class GeminiError(
     val status: String? = null
 )
 
+private data class EndpointCandidate(
+    val url: String,
+    val jsonBody: String,
+    val headers: Map<String, String>,
+    val description: String
+)
+
 /**
  * Native adapter for Google Antigravity / Gemini CLI.
  *
@@ -118,12 +128,44 @@ class AntigravityAdapter(
         Capability.Diff
     )
 
+    companion object {
+        private val logHistory = java.util.concurrent.ConcurrentLinkedDeque<String>()
+        private val _logsFlow = MutableStateFlow<List<String>>(emptyList())
+        val logsFlow: StateFlow<List<String>> = _logsFlow.asStateFlow()
+
+        fun log(msg: String) {
+            val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
+            val formatted = "[$timestamp] [Antigravity] $msg"
+            try {
+                android.util.Log.i("Antigravity", formatted)
+            } catch (_: Throwable) {
+                println(formatted)
+            }
+            logHistory.add(formatted)
+            while (logHistory.size > 1000) {
+                logHistory.poll()
+            }
+            _logsFlow.value = logHistory.toList()
+        }
+
+        fun clearLogs() {
+            logHistory.clear()
+            _logsFlow.value = emptyList()
+        }
+    }
+
     override suspend fun connect(): Result<Unit> {
+        log("connect() checking authorization...")
         val tokenRes = authManager.getValidAccessToken()
         return if (tokenRes.isSuccess) {
+            val token = tokenRes.getOrNull().orEmpty()
+            val tokenKind = if (token.startsWith("AIza")) "API_KEY" else "OAUTH_BEARER"
+            log("connect() success with $tokenKind (${token.take(6)}...)")
             Result.success(Unit)
         } else {
-            Result.failure(tokenRes.exceptionOrNull() ?: IllegalStateException("Google Antigravity не авторизован"))
+            val err = tokenRes.exceptionOrNull()?.message ?: "Google Antigravity не авторизован"
+            log("connect() failed: $err")
+            Result.failure(tokenRes.exceptionOrNull() ?: IllegalStateException(err))
         }
     }
 
@@ -133,6 +175,7 @@ class AntigravityAdapter(
 
     override suspend fun createSession(title: String, directory: String?): Result<Session> {
         val sessionId = "antigravity_${UUID.randomUUID().toString().take(8)}"
+        log("createSession: id=$sessionId title='$title' directory=$directory")
         val session = Session(
             id = sessionId,
             profileId = profileId,
@@ -176,8 +219,11 @@ class AntigravityAdapter(
         val model = prompt.model?.modelId
             ?: authManager.state.value.selectedModel.ifEmpty { AntigravityAuthManager.DEFAULT_MODEL }
 
+        log("sendPrompt: session=$sessionId model=$model promptLen=${prompt.text.length}")
+
         val activeJob = activeJobs[sessionId]
         if (activeJob?.isActive == true) {
+            log("Canceling existing active job for session $sessionId")
             activeJob.cancel()
         }
 
@@ -191,11 +237,15 @@ class AntigravityAdapter(
                 val tokenResult = authManager.getValidAccessToken()
                 if (tokenResult.isFailure) {
                     val errorMsg = tokenResult.exceptionOrNull()?.message ?: "Ошибка авторизации Google Antigravity"
+                    log("sendPrompt auth failed: $errorMsg")
+                    _eventFlow.emit(AgentEvent.TextDelta(assistantMsgId, "❌ $errorMsg\n\n*Авторизуйтесь в Настройках -> Gemini / Antigravity.*"))
                     _eventFlow.emit(AgentEvent.Error(errorMsg, recoverable = true))
                     _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.ERROR))
                     return@launch
                 }
                 val token = tokenResult.getOrThrow()
+                val isApiKey = token.startsWith("AIza")
+                log("Auth token valid: kind=${if (isApiKey) "API_KEY" else "OAUTH_BEARER"} (${token.take(6)}...)")
 
                 // Load prior conversation messages for multi-turn context
                 val conversationContents = mutableListOf<GeminiContent>()
@@ -232,80 +282,196 @@ class AntigravityAdapter(
                     generationConfig = GeminiGenerationConfig(temperature = 0.7)
                 )
 
-                val isApiKey = token.startsWith("AIza")
+                val directBody = json.encodeToString(requestPayload)
+                val candidates = mutableListOf<EndpointCandidate>()
 
-                val (url, jsonBody) = if (isApiKey) {
-                    val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$token"
-                    val body = json.encodeToString(requestPayload)
-                    endpoint to body
-                } else {
-                    val endpoint = "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
-                    val boqPayload = AntigravityBoQRequest(
-                        project = "aicode-consumers",
-                        model = model,
-                        userAgent = "antigravity",
-                        requestType = "agent",
-                        request = requestPayload
+                if (isApiKey) {
+                    candidates.add(
+                        EndpointCandidate(
+                            url = "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$token",
+                            jsonBody = directBody,
+                            headers = mapOf("Accept" to "text/event-stream"),
+                            description = "Generative Language API ($model)"
+                        )
                     )
-                    val body = json.encodeToString(boqPayload)
-                    endpoint to body
-                }
-
-                val requestBuilder = Request.Builder()
-                    .url(url)
-                    .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                    .header("Accept", "text/event-stream")
-
-                if (!isApiKey) {
-                    requestBuilder.header("Authorization", "Bearer $token")
-                    requestBuilder.header("User-Agent", "antigravity/cli/1.2.14 (aidev_client; os_type=android; arch=arm64)")
-                }
-
-                val call = okHttpClient.newCall(requestBuilder.build())
-                activeCalls[sessionId] = call
-
-                call.execute().use { response ->
-                    if (!response.isSuccessful) {
-                        val errBody = response.body?.string().orEmpty()
-                        val errMsg = "Ошибка Antigravity API (HTTP ${response.code}): $errBody"
-                        _eventFlow.emit(AgentEvent.Error(errMsg, recoverable = true))
-                        _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.ERROR))
-                        return@launch
+                    if (!model.startsWith("gemini-2.5") && !model.startsWith("gemini-2.0") && !model.startsWith("gemini-1.5")) {
+                        candidates.add(
+                            EndpointCandidate(
+                                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=$token",
+                                jsonBody = directBody,
+                                headers = mapOf("Accept" to "text/event-stream"),
+                                description = "Generative Language API Fallback (gemini-2.5-flash)"
+                            )
+                        )
                     }
+                } else {
+                    val boqPayload = json.encodeToString(
+                        AntigravityBoQRequest(
+                            project = "aicode-consumers",
+                            model = model,
+                            userAgent = "antigravity",
+                            requestType = "agent",
+                            request = requestPayload
+                        )
+                    )
+                    candidates.add(
+                        EndpointCandidate(
+                            url = "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
+                            jsonBody = boqPayload,
+                            headers = mapOf(
+                                "Accept" to "text/event-stream",
+                                "Authorization" to "Bearer $token",
+                                "User-Agent" to "antigravity/cli/1.2.14 (aidev_client; os_type=android; arch=arm64)"
+                            ),
+                            description = "Cloud Code Production Gateway (cloudcode-pa)"
+                        )
+                    )
+                    candidates.add(
+                        EndpointCandidate(
+                            url = "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
+                            jsonBody = boqPayload,
+                            headers = mapOf(
+                                "Accept" to "text/event-stream",
+                                "Authorization" to "Bearer $token",
+                                "User-Agent" to "antigravity/cli/1.2.14 (aidev_client; os_type=android; arch=arm64)"
+                            ),
+                            description = "Cloud Code Daily Gateway (daily-cloudcode-pa)"
+                        )
+                    )
+                    candidates.add(
+                        EndpointCandidate(
+                            url = "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse",
+                            jsonBody = directBody,
+                            headers = mapOf(
+                                "Accept" to "text/event-stream",
+                                "Authorization" to "Bearer $token"
+                            ),
+                            description = "Generative Language API OAuth ($model)"
+                        )
+                    )
+                    if (!model.startsWith("gemini-2.5") && !model.startsWith("gemini-2.0") && !model.startsWith("gemini-1.5")) {
+                        candidates.add(
+                            EndpointCandidate(
+                                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+                                jsonBody = directBody,
+                                headers = mapOf(
+                                    "Accept" to "text/event-stream",
+                                    "Authorization" to "Bearer $token"
+                                ),
+                                description = "Generative Language API Fallback (gemini-2.5-flash)"
+                            )
+                        )
+                    }
+                }
 
-                    val source = response.body?.source() ?: return@launch
-                    while (!source.exhausted() && isActive) {
-                        val line = source.readUtf8Line() ?: break
-                        if (line.startsWith("data:")) {
-                            val jsonLine = line.removePrefix("data:").trim()
-                            if (jsonLine.isNotEmpty()) {
-                                try {
-                                    val chunk = json.decodeFromString<GeminiStreamChunk>(jsonLine)
-                                    val candidate = (chunk.response?.candidates ?: chunk.candidates)?.firstOrNull()
-                                    candidate?.content?.parts?.forEach { part ->
-                                        val text = part.text
-                                        if (!text.isNullOrEmpty()) {
-                                            if (part.thought == true) {
-                                                _eventFlow.emit(AgentEvent.ReasoningDelta(assistantMsgId, text))
-                                            } else {
-                                                _eventFlow.emit(AgentEvent.TextDelta(assistantMsgId, text))
+                val attemptSummary = StringBuilder()
+                var streamSuccess = false
+
+                for ((index, candidate) in candidates.withIndex()) {
+                    if (!isActive) break
+                    log("Endpoint [${index + 1}/${candidates.size}] trying ${candidate.description} -> ${candidate.url}")
+                    val reqBuilder = Request.Builder()
+                        .url(candidate.url)
+                        .post(candidate.jsonBody.toRequestBody("application/json".toMediaType()))
+                    candidate.headers.forEach { (k, v) -> reqBuilder.header(k, v) }
+
+                    val call = okHttpClient.newCall(reqBuilder.build())
+                    activeCalls[sessionId] = call
+
+                    try {
+                        call.execute().use { response ->
+                            log("Endpoint [${index + 1}/${candidates.size}] ${candidate.description} responded HTTP ${response.code} ${response.message}")
+                            if (!response.isSuccessful) {
+                                val errBody = response.body?.string().orEmpty().take(300)
+                                val detail = "HTTP ${response.code}: $errBody"
+                                log("Error from ${candidate.description}: $detail")
+                                attemptSummary.append("• ${candidate.description}: $detail\n")
+                                return@use
+                            }
+
+                            val source = response.body?.source()
+                            if (source == null) {
+                                log("Error: empty response body from ${candidate.description}")
+                                attemptSummary.append("• ${candidate.description}: Пустой ответ сервера\n")
+                                return@use
+                            }
+
+                            var chunkCount = 0
+                            while (!source.exhausted() && isActive) {
+                                val line = source.readUtf8Line() ?: break
+                                if (line.startsWith("data:")) {
+                                    val jsonLine = line.removePrefix("data:").trim()
+                                    if (jsonLine.isNotEmpty()) {
+                                        try {
+                                            val chunk = json.decodeFromString<GeminiStreamChunk>(jsonLine)
+                                            val candidateChunk = (chunk.response?.candidates ?: chunk.candidates)?.firstOrNull()
+                                            candidateChunk?.content?.parts?.forEach { part ->
+                                                val text = part.text
+                                                if (!text.isNullOrEmpty()) {
+                                                    if (chunkCount == 0) {
+                                                        log("First streaming chunk received from ${candidate.description}")
+                                                    }
+                                                    chunkCount++
+                                                    if (part.thought == true) {
+                                                        _eventFlow.emit(AgentEvent.ReasoningDelta(assistantMsgId, text))
+                                                    } else {
+                                                        _eventFlow.emit(AgentEvent.TextDelta(assistantMsgId, text))
+                                                    }
+                                                }
                                             }
+                                        } catch (_: Exception) {
+                                            // Non-fatal parse glitch on keep-alive or malformed chunk
                                         }
                                     }
-                                } catch (_: Exception) {
-                                    // Non-fatal parse glitch on keep-alive or malformed chunk
                                 }
                             }
+
+                            if (chunkCount > 0) {
+                                streamSuccess = true
+                                log("Stream completed successfully via ${candidate.description} ($chunkCount chunks received)")
+                            } else {
+                                log("Warning: stream closed without delivering any content parts")
+                                attemptSummary.append("• ${candidate.description}: Соединение закрылось без данных\n")
+                            }
                         }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        val detail = "${e.javaClass.simpleName}: ${e.message}"
+                        log("Exception during ${candidate.description}: $detail")
+                        attemptSummary.append("• ${candidate.description}: $detail\n")
+                    }
+
+                    if (streamSuccess) {
+                        _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.IDLE))
+                        return@launch
                     }
                 }
 
-                _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.IDLE))
+                val explanation = """
+❌ **Не удалось получить ответ от Google Antigravity**
+
+**Результаты обращения к серверам Google:**
+$attemptSummary
+💡 **Рекомендация:**
+1. Если вы авторизовались через Google-аккаунт, доступ к корпоративным шлюзам Cloud Code (`cloudcode-pa`) может требовать проект Google Cloud.
+2. Самый надежный способ: получите бесплатный API-ключ в [Google AI Studio](https://aistudio.google.com/app/apikey) и укажите его в **Настройки -> Gemini / Antigravity -> Ввести API-ключ**.
+3. Подробный журнал запросов доступен в **Настройки -> Просмотр логов**.
+""".trimIndent()
+
+                log("All ${candidates.size} endpoints failed. Emitting explanation to chat session $sessionId.")
+                _eventFlow.emit(AgentEvent.TextDelta(assistantMsgId, explanation))
+                _eventFlow.emit(AgentEvent.Error("Все эндпоинты Antigravity вернули ошибку", recoverable = true))
+                _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.ERROR))
             } catch (e: CancellationException) {
+                log("Session $sessionId cancelled")
                 _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.IDLE))
                 throw e
             } catch (e: Exception) {
-                _eventFlow.emit(AgentEvent.Error(e.message ?: "Неизвестная ошибка Antigravity", recoverable = true))
+                val err = e.message ?: "Неизвестная ошибка Antigravity"
+                log("sendPrompt unexpected exception: $err")
+                _eventFlow.emit(AgentEvent.TextDelta(assistantMsgId, "\n\n❌ **Ошибка:** $err"))
+                _eventFlow.emit(AgentEvent.Error(err, recoverable = true))
                 _eventFlow.emit(AgentEvent.SessionStatus(sessionId, SessionState.ERROR))
             } finally {
                 activeCalls.remove(sessionId)

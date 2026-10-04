@@ -33,112 +33,113 @@ class OpenCodeAdapter(
 
         return sseClient.events()
             .mapNotNull { event ->
-                val payload = event.payload
-                val obj = runCatching { payload.properties.jsonObject }.getOrNull() ?: return@mapNotNull null
+                runCatching {
+                    val payload = event.payload
+                    val obj = payload.properties.jsonObject
 
-                when (payload.type) {
-                    "session.status" -> {
-                        val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
-                        val statusType = obj["status"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
-                        if (sid == sessionId && statusType != null) {
-                            val state = when (statusType.lowercase()) {
-                                "busy" -> SessionState.BUSY
-                                "retry" -> SessionState.RETRY
-                                "error" -> SessionState.ERROR
-                                else -> SessionState.IDLE
-                            }
-                            AgentEvent.SessionStatus(sessionId, state)
-                        } else null
-                    }
-
-                    "session.idle" -> {
-                        val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
-                        if (sid == null || sid == sessionId) {
-                            AgentEvent.SessionStatus(sessionId, SessionState.IDLE)
-                        } else null
-                    }
-
-                    "message.updated" -> {
-                        val info = obj["info"]?.jsonObject
-                        val sid = info?.get("sessionID")?.jsonPrimitive?.contentOrNull
-                        val msgId = info?.get("id")?.jsonPrimitive?.contentOrNull
-                        val roleStr = info?.get("role")?.jsonPrimitive?.contentOrNull
-
-                        if (sid == sessionId && msgId != null) {
-                            val role = if (roleStr.equals("user", ignoreCase = true)) {
-                                MessageRole.USER
-                            } else {
-                                MessageRole.ASSISTANT
-                            }
-                            if (role == MessageRole.USER) {
-                                null
-                            } else {
-                                AgentEvent.MessageStarted(sessionId, msgId, role)
-                            }
-                        } else null
-                    }
-
-                    "message.part.delta" -> {
-                        val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
-                        val msgId = obj["messageID"]?.jsonPrimitive?.contentOrNull
-                        val partId = obj["partID"]?.jsonPrimitive?.contentOrNull
-                        val field = obj["field"]?.jsonPrimitive?.contentOrNull
-                        val delta = obj["delta"]?.jsonPrimitive?.contentOrNull
-
-                        if (sid == sessionId && msgId != null && delta != null) {
-                            val partType = if (partId != null) partTypes[partId] else null
-                            val isReasoning = field.equals("reasoning", ignoreCase = true) || partType == "reasoning"
-                            if (isReasoning) {
-                                AgentEvent.ReasoningDelta(msgId, delta)
-                            } else {
-                                AgentEvent.TextDelta(msgId, delta)
-                            }
-                        } else null
-                    }
-
-                    "message.part.updated" -> {
-                        val part = obj["part"]?.jsonObject
-                        val sid = part?.get("sessionID")?.jsonPrimitive?.contentOrNull
-                        val partId = part?.get("id")?.jsonPrimitive?.contentOrNull
-                        val type = part?.get("type")?.jsonPrimitive?.contentOrNull
-
-                        if (partId != null && type != null) {
-                            partTypes[partId] = type
+                    when (payload.type) {
+                        "session.status" -> {
+                            val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
+                            val statusType = obj["status"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull
+                            if (sid == sessionId && statusType != null) {
+                                val state = when (statusType.lowercase()) {
+                                    "busy" -> SessionState.BUSY
+                                    "retry" -> SessionState.RETRY
+                                    "error" -> SessionState.ERROR
+                                    else -> SessionState.IDLE
+                                }
+                                AgentEvent.SessionStatus(sessionId, state)
+                            } else null
                         }
 
-                        if (sid == sessionId && type == "tool") {
-                            val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
-                            val callId = part?.get("callID")?.jsonPrimitive?.contentOrNull
-                                ?: part?.get("id")?.jsonPrimitive?.contentOrNull ?: ""
-                            val toolName = part?.get("tool")?.jsonPrimitive?.contentOrNull ?: "unknown_tool"
-                            val state = part?.get("state")?.jsonObject
-                            val statusStr = state?.get("status")?.jsonPrimitive?.contentOrNull ?: "completed"
-                            val status = when (statusStr.lowercase()) {
-                                "running" -> ToolStatus.RUNNING
-                                "completed" -> ToolStatus.COMPLETED
-                                "error" -> ToolStatus.ERROR
-                                else -> ToolStatus.PENDING
-                            }
-                            val input = state?.get("input")?.toString()
-                            val output = state?.get("output")?.jsonPrimitive?.contentOrNull
-                                ?: state?.get("error")?.jsonPrimitive?.contentOrNull
-
-                            AgentEvent.ToolCallUpdate(
-                                messageId = msgId,
-                                callId = callId,
-                                name = toolName,
-                                status = status,
-                                input = input,
-                                output = output
-                            )
-                        } else if (sid == sessionId && type == "reasoning") {
-                            val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
-                            val text = part?.get("text")?.jsonPrimitive?.contentOrNull
-                            if (!text.isNullOrEmpty()) {
-                                AgentEvent.ReasoningDelta(msgId, text)
+                        "session.idle" -> {
+                            val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
+                            if (sid == null || sid == sessionId) {
+                                AgentEvent.SessionStatus(sessionId, SessionState.IDLE)
                             } else null
-                        } else null
-                    }
+                        }
+
+                        "message.updated" -> {
+                            val info = obj["info"]?.jsonObject
+                            val sid = info?.get("sessionID")?.jsonPrimitive?.contentOrNull
+                            val msgId = info?.get("id")?.jsonPrimitive?.contentOrNull
+                            val roleStr = info?.get("role")?.jsonPrimitive?.contentOrNull
+
+                            if (sid == sessionId && msgId != null) {
+                                val role = if (roleStr.equals("user", ignoreCase = true)) {
+                                    MessageRole.USER
+                                } else {
+                                    MessageRole.ASSISTANT
+                                }
+                                if (role == MessageRole.USER) {
+                                    null
+                                } else {
+                                    AgentEvent.MessageStarted(sessionId, msgId, role)
+                                }
+                            } else null
+                        }
+
+                        "message.part.delta" -> {
+                            val sid = obj["sessionID"]?.jsonPrimitive?.contentOrNull
+                            val msgId = obj["messageID"]?.jsonPrimitive?.contentOrNull
+                            val partId = obj["partID"]?.jsonPrimitive?.contentOrNull
+                            val field = obj["field"]?.jsonPrimitive?.contentOrNull
+                            val delta = obj["delta"]?.jsonPrimitive?.contentOrNull
+
+                            if (sid == sessionId && msgId != null && delta != null) {
+                                val partType = if (partId != null) partTypes[partId] else null
+                                val isReasoning = field.equals("reasoning", ignoreCase = true) || partType == "reasoning"
+                                if (isReasoning) {
+                                    AgentEvent.ReasoningDelta(msgId, delta)
+                                } else {
+                                    AgentEvent.TextDelta(msgId, delta)
+                                }
+                            } else null
+                        }
+
+                        "message.part.updated" -> {
+                            val part = obj["part"]?.jsonObject
+                            val sid = part?.get("sessionID")?.jsonPrimitive?.contentOrNull
+                            val partId = part?.get("id")?.jsonPrimitive?.contentOrNull
+                            val type = part?.get("type")?.jsonPrimitive?.contentOrNull
+
+                            if (partId != null && type != null) {
+                                partTypes[partId] = type
+                            }
+
+                            if (sid == sessionId && type == "tool") {
+                                val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
+                                val callId = part?.get("callID")?.jsonPrimitive?.contentOrNull
+                                    ?: part?.get("id")?.jsonPrimitive?.contentOrNull ?: ""
+                                val toolName = part?.get("tool")?.jsonPrimitive?.contentOrNull ?: "unknown_tool"
+                                val state = part?.get("state")?.jsonObject
+                                val statusStr = state?.get("status")?.jsonPrimitive?.contentOrNull ?: "completed"
+                                val status = when (statusStr.lowercase()) {
+                                    "running" -> ToolStatus.RUNNING
+                                    "completed" -> ToolStatus.COMPLETED
+                                    "error" -> ToolStatus.ERROR
+                                    else -> ToolStatus.PENDING
+                                }
+                                val input = state?.get("input")?.toContentString() ?: state?.get("input")?.toString()
+                                val output = state?.get("output").toContentString()
+                                    ?: state?.get("error").toContentString()
+
+                                AgentEvent.ToolCallUpdate(
+                                    messageId = msgId,
+                                    callId = callId,
+                                    name = toolName,
+                                    status = status,
+                                    input = input,
+                                    output = output
+                                )
+                            } else if (sid == sessionId && type == "reasoning") {
+                                val msgId = part?.get("messageID")?.jsonPrimitive?.contentOrNull ?: ""
+                                val text = part?.get("text")?.jsonPrimitive?.contentOrNull
+                                if (!text.isNullOrEmpty()) {
+                                    AgentEvent.ReasoningDelta(msgId, text)
+                                } else null
+                            } else null
+                        }
 
                     "message.part.removed" -> {
                         val partId = obj["partID"]?.jsonPrimitive?.contentOrNull
@@ -189,7 +190,7 @@ class OpenCodeAdapter(
 
                     else -> null
                 }
-            }
+            }.getOrNull()
     }
 
     override suspend fun getModels(): Result<List<ModelInfo>> {
@@ -267,4 +268,22 @@ class OpenCodeAdapter(
     override suspend fun disconnect() {
         // Disconnect handled by lifecycle scope
     }
+}
+
+private fun JsonElement?.toContentString(): String? = when {
+    this == null || this is JsonNull -> null
+    this is JsonPrimitive -> this.contentOrNull ?: this.toString()
+    this is JsonObject -> {
+        val stdout = this["stdout"]?.let { if (it is JsonPrimitive) it.contentOrNull else it.toString() }
+        val stderr = this["stderr"]?.let { if (it is JsonPrimitive) it.contentOrNull else it.toString() }
+        val msg = this["message"]?.let { if (it is JsonPrimitive) it.contentOrNull else it.toString() }
+        when {
+            !stdout.isNullOrEmpty() && !stderr.isNullOrEmpty() -> "$stdout\n$stderr"
+            !stdout.isNullOrEmpty() -> stdout
+            !stderr.isNullOrEmpty() -> stderr
+            !msg.isNullOrEmpty() -> msg
+            else -> this.toString()
+        }
+    }
+    else -> this.toString()
 }

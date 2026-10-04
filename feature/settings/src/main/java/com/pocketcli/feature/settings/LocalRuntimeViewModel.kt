@@ -7,6 +7,7 @@ import com.pocketcli.core.security.AntigravityAuthState
 import com.pocketcli.core.security.DeviceAuthCode
 import com.pocketcli.core.security.ProviderKeyStore
 import com.pocketcli.data.local.db.ProfileDao
+import com.pocketcli.data.opencode.antigravity.AntigravityAdapter
 import com.pocketcli.data.opencode.connection.ActiveConnectionManager
 import com.pocketcli.runtime.local.installer.InstallState
 import com.pocketcli.runtime.local.installer.RuntimeInstaller
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,7 +46,12 @@ class LocalRuntimeViewModel @Inject constructor(
 
     val installerState: StateFlow<InstallState> = runtimeInstaller.state
     val supervisorState: StateFlow<LocalRuntimeState> = supervisor.state
-    val logs: StateFlow<List<String>> = supervisor.logBuffer.linesFlow
+    val logs: StateFlow<List<String>> = combine(
+        supervisor.logBuffer.linesFlow,
+        AntigravityAdapter.logsFlow
+    ) { supervisorLogs, antigravityLogs ->
+        (supervisorLogs + antigravityLogs).takeLast(1000)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val antigravityAuthState: StateFlow<AntigravityAuthState> = antigravityAuthManager?.state
         ?: MutableStateFlow(AntigravityAuthState()).asStateFlow()
@@ -110,6 +117,7 @@ class LocalRuntimeViewModel @Inject constructor(
 
     fun clearLogs() {
         supervisor.logBuffer.clear()
+        AntigravityAdapter.clearLogs()
     }
 
     fun install() {

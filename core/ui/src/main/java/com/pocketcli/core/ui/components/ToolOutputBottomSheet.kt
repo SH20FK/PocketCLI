@@ -84,17 +84,17 @@ fun ToolOutputBottomSheet(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Virtualized output view (LazyColumn prevents OOM/ANR)
-            SelectionContainer(modifier = Modifier.weight(1f)) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    itemsIndexed(filteredLines) { index, line ->
-                        Text(
-                            text = line,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                itemsIndexed(filteredLines) { index, line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
