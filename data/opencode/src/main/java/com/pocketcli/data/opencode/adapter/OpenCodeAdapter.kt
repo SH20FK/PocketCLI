@@ -191,6 +191,7 @@ class OpenCodeAdapter(
                     else -> null
                 }
             }.getOrNull()
+        }
     }
 
     override suspend fun getModels(): Result<List<ModelInfo>> {
