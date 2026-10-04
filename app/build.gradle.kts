@@ -16,7 +16,7 @@ android {
         ?: 1000010
     val vName = (project.findProperty("versionName") as? String)
         ?: System.getenv("VERSION_NAME")
-        ?: "1.0.9-beta.2"
+        ?: "1.0.9-beta.3"
 
     defaultConfig {
         applicationId = "com.pocketcli"
