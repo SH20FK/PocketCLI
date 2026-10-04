@@ -255,4 +255,35 @@ class GitHubReleaseApiTest {
         val invalid = result as ManifestFetchResult.InvalidManifest
         assertEquals("v1.0.2", invalid.tag)
     }
+
+    @Test
+    fun `test parseAtomFeed correctly extracts releases and tags`() {
+        val dummyXml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <feed xmlns="http://www.w3.org/2005/Atom">
+              <entry>
+                <id>tag:github.com,2008:Repository/1402646325/v1.0.9-beta.4</id>
+                <updated>2026-10-04T15:38:33Z</updated>
+                <link rel="alternate" type="text/html" href="https://github.com/SH20FK/PocketCLI/releases/tag/v1.0.9-beta.4"/>
+                <title>PocketCLI v1.0.9-beta.4</title>
+              </entry>
+              <entry>
+                <id>tag:github.com,2008:Repository/1402646325/v1.0.0</id>
+                <updated>2026-10-01T10:00:00Z</updated>
+                <link rel="alternate" type="text/html" href="https://github.com/SH20FK/PocketCLI/releases/tag/v1.0.0"/>
+                <title>PocketCLI v1.0.0</title>
+              </entry>
+            </feed>
+        """.trimIndent()
+
+        val releases = releaseApi.parseAtomFeed(dummyXml, "SH20FK", "PocketCLI")
+
+        assertEquals(2, releases.size)
+        assertEquals("v1.0.9-beta.4", releases[0].tagName)
+        assertTrue(releases[0].prerelease)
+        assertEquals("https://github.com/SH20FK/PocketCLI/releases/download/v1.0.9-beta.4/update.json", releases[0].assets.first().browserDownloadUrl)
+
+        assertEquals("v1.0.0", releases[1].tagName)
+        assertFalse(releases[1].prerelease)
+    }
 }

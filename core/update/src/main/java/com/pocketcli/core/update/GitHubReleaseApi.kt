@@ -79,8 +79,11 @@ class GitHubReleaseApi @Inject constructor(
             val atomReleases = fetchFromAtomFeed(repoOwner, repoName)
             if (atomReleases.isNotEmpty()) {
                 releases = atomReleases
-            } else if (lastError != null) {
-                return@withContext ManifestFetchResult.NetworkError(lastError)
+            } else {
+                val err = lastError
+                if (err != null) {
+                    return@withContext ManifestFetchResult.NetworkError(err)
+                }
             }
         }
 
